@@ -334,8 +334,10 @@ function fillMarkers(){
   const scene=$("respawnScene").value;
   const pd=saveData.playerData||{};
   const markers=(RESPAWN_POINTS[scene]||[]).slice();
-  fillSelect($("respawnMarker"), markers, pd.respawnMarkerName);
-  // 自动联动 respawnType
+  let current=pd.respawnMarkerName;
+  if(!markers.includes(current))
+    current=markers.find(m=>m.includes("RestBench"))||markers[0];
+  fillSelect($("respawnMarker"), markers, current);
   syncRespawnType();
 }
 function syncRespawnType(){
