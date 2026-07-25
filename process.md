@@ -47,6 +47,32 @@
 - 存档字段必须与游戏 `PlayerData` 完全一致，多写不存在的字段有反序列化风险（如 HasSeenDoubleJump 并不存在，已避免）
 - 写回时 7-bit 长度前缀需重算，已做完整解密→修改→加密→回读验证（round-trip 通过）
 
+## 进展 3（2026-07-25）：可视化存档修改工具 + 重要 bug 修复
+
+**部分纹章组合已实机验证成功** ✅（用户反馈）
+
+### 新工具：`tools/SaveEditor/index.html`
+
+单文件、零依赖、纯本地的网页存档修改器，双击即可在浏览器使用（拖放或选择 `user*.dat`）：
+- **出生点**：场景 + 重生点两级下拉，选项来自从游戏 `resources.assets` 解析出的 SceneTeleportMap（142 个场景、89 个长椅场景的真实数据）；选 RestBench 自动联动"在长椅上醒来"（respawnType=1）
+- **血量**：当前血量 health、血量上限 maxHealth/maxHealthBase/prevHealth
+- **伤害**：织针等级 nailUpgrades 0–4（对应伤害 5/9/13/17/21，反编译 PlayerData 确认）
+- **灵丝上限** silkMax（附带）
+- **一键习得所有技能**：8 个先祖技艺（冲刺/攀墙/二段跳/滑翔/飞针/灵丝升腾/蓄力斩/织忆弦针）+ 6 个灵丝技能（同时写 PlayerData 布尔位和 Tools 解锁条目）
+- **一键解锁所有纹章**：10 个纹章写入 ToolEquips
+- 实现：纯 JS AES-256-ECB + Base64 + BinaryFormatter 包装，通过了 AES 标准测试向量校验，并用 Python 对 JS 输出做交叉验证（round-trip 一致）
+
+### 重要 bug 修复：纹章/工具解锁写错位置 ⚠️
+
+- 上次直接改存档时，把 `ToolEquips`/`Tools` 写到了 JSON **顶层**，而游戏只读 `playerData.ToolEquips` / `playerData.Tools` → "所有纹章"和"丝之矛"实际**没生效**（游戏下次存档时还把这些未知顶层字段丢弃了）。能验证成功是因为 Mod 的自定义纹章走的是运行时注入，不依赖存档解锁。
+- 已在存档工具和手动修改中一并修正；用户存档已重新正确写入 10 纹章 + 6 灵丝技能工具（备份 `user1.dat.bak_fix2`）。
+
+### 难点记录
+
+1. 初版 JS AES 轮函数中 AddRoundKey 与 MixColumns 顺序写反，输出全错 → 用 AES-256 标准测试向量（FIPS-197）定位并修复，重写为干净的轮结构实现。
+2. 存档 JSON 顶层只有 `playerData` 和 `sceneData`，纹章/工具列表藏在 playerData 内部——靠回读验证才发现写错层级，教训：**修改后必须用游戏真实读取路径验证**。
+3. SceneTeleportMap 是 resources.assets 里的二进制 ScriptableObject，手写了一个长度前缀字符串解析器提取了全部场景/重生点数据（含 `RestBench`、`TrapBench`、`Death Respawn Marker *` 等）。
+
 ## 已实现的架构
 
 - `Plugin.cs`：BepInEx 入口，初始化目录/存档/Harmony 补丁。

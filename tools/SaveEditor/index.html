@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>丝之歌存档修改工具</title>
+<style>
+  :root { --bg:#14171c; --panel:#1d2129; --panel2:#242a34; --text:#e8e6df; --dim:#9a958a; --accent:#c8a850; --accent2:#8a6d2f; --ok:#7fbf7f; --warn:#e0a040; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:"Microsoft YaHei","微软雅黑",sans-serif; font-size:15px; }
+  header { padding:18px 28px; border-bottom:2px solid var(--accent2); }
+  header h1 { margin:0; font-size:22px; color:var(--accent); }
+  header p { margin:6px 0 0; color:var(--dim); font-size:13px; }
+  main { max-width:880px; margin:0 auto; padding:20px 28px 60px; }
+  .drop { border:2px dashed var(--accent2); border-radius:10px; padding:38px 20px; text-align:center; color:var(--dim); cursor:pointer; transition:.15s; }
+  .drop:hover,.drop.over { border-color:var(--accent); color:var(--text); background:var(--panel); }
+  .panel { background:var(--panel); border:1px solid #303846; border-radius:10px; padding:16px 20px; margin-top:16px; }
+  .panel h2 { margin:0 0 12px; font-size:17px; color:var(--accent); border-bottom:1px solid #303846; padding-bottom:8px; }
+  .row { display:flex; flex-wrap:wrap; gap:14px 22px; align-items:center; margin:8px 0; }
+  label { color:var(--dim); min-width:88px; }
+  select,input[type=number] { background:var(--panel2); color:var(--text); border:1px solid #3a4353; border-radius:6px; padding:7px 10px; font-size:14px; min-width:180px; }
+  select:focus,input:focus { outline:none; border-color:var(--accent); }
+  button { background:var(--accent2); color:#fff; border:none; border-radius:6px; padding:9px 18px; font-size:14px; cursor:pointer; }
+  button:hover { background:var(--accent); color:#14171c; }
+  button.big { width:100%; padding:13px; font-size:16px; font-weight:bold; background:var(--accent); color:#14171c; margin-top:16px; }
+  button.big:hover { background:#e0c070; }
+  .hint { color:var(--dim); font-size:12.5px; margin-top:4px; }
+  .status { margin-top:14px; padding:10px 14px; border-radius:6px; font-size:13.5px; display:none; white-space:pre-wrap; }
+  .status.ok { display:block; background:#1e3320; color:var(--ok); border:1px solid #2e5a30; }
+  .status.err { display:block; background:#3a2222; color:#e08080; border:1px solid #5a3030; }
+  .tag { display:inline-block; background:var(--panel2); border:1px solid #3a4353; border-radius:5px; padding:2px 8px; margin:2px 4px 2px 0; font-size:12.5px; color:var(--dim); }
+  .tag b { color:var(--ok); font-weight:normal; }
+  .hidden { display:none; }
+  .sec-info { color:var(--dim); font-size:13px; margin-bottom:8px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>丝之歌存档修改工具</h1>
+  <p>支持 user1~4.dat / restoreData*.dat ・ 可修改出生点、血量上限、织针伤害，一键习得所有技能 / 解锁所有纹章 ・ 所有处理均在本地完成</p>
+</header>
+<main>
+  <div class="drop" id="drop">
+    <div style="font-size:17px">把存档文件（user1.dat）拖到这里，或点击选择文件</div>
+    <div class="hint">存档位置：%USERPROFILE%\AppData\LocalLow\Team Cherry\Hollow Knight Silksong\&lt;数字或default&gt;\user1.dat<br>建议修改前先备份原文件</div>
+    <input type="file" id="file" accept=".dat" class="hidden">
+  </div>
+
+  <div id="editor" class="hidden">
+    <div class="panel">
+      <h2>基本信息</h2>
+      <div class="sec-info" id="basicInfo">—</div>
+    </div>
+
+    <div class="panel">
+      <h2>出生点（死亡 / 读档后醒来的位置）</h2>
+      <div class="row">
+        <label>场景</label>
+        <select id="respawnScene"></select>
+      </div>
+      <div class="row">
+        <label>重生点</label>
+        <select id="respawnMarker"></select>
+      </div>
+      <div class="row">
+        <label>方式</label>
+        <select id="respawnType">
+          <option value="1">在长椅上醒来（respawnType=1）</option>
+          <option value="0">普通重生点（respawnType=0）</option>
+        </select>
+      </div>
+      <div class="hint">选择名字含 RestBench 的重生点并配合"在长椅上醒来"，即可出生在长椅上。数据来自游戏内嵌 SceneTeleportMap。</div>
+    </div>
+
+    <div class="panel">
+      <h2>血量</h2>
+      <div class="row">
+        <label>当前血量</label>
+        <input type="number" id="health" min="1" max="99">
+        <label>血量上限</label>
+        <input type="number" id="maxHealth" min="1" max="99">
+      </div>
+      <div class="hint">血量上限会同时写入 maxHealth / maxHealthBase / prevHealth。</div>
+    </div>
+
+    <div class="panel">
+      <h2>织针伤害</h2>
+      <div class="row">
+        <label>织针等级</label>
+        <select id="nailUpgrades">
+          <option value="0">0 级（伤害 5）</option>
+          <option value="1">1 级（伤害 9）</option>
+          <option value="2">2 级（伤害 13）</option>
+          <option value="3">3 级（伤害 17）</option>
+          <option value="4">4 级（伤害 21）</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>灵丝</h2>
+      <div class="row">
+        <label>灵丝上限</label>
+        <input type="number" id="silkMax" min="0" max="99">
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>一键解锁</h2>
+      <div class="row">
+        <button id="btnSkills">习得所有技能</button>
+        <button id="btnCrests">解锁所有纹章</button>
+      </div>
+      <div class="hint" style="margin-top:8px">
+        <b>所有技能</b>：疾风步(冲刺)、蛛形攀墙、二段跳斗篷、漂泊者斗篷(滑翔)、飞针冲刺、灵丝升腾、蓄力斩、织忆弦针，以及 6 个灵丝技能（丝之矛/丝线风暴/十字绣/丝刃冲刺/符文之怒/苍白之钉）<br>
+        <b>所有纹章</b>：猎手×3、漫游者、野兽、收割者、女巫、工匠、萨满、诅咒（共 10 个）
+      </div>
+      <div id="unlockTags" style="margin-top:8px"></div>
+    </div>
+
+    <button class="big" id="btnSave">保存并下载修改后的存档</button>
+    <div class="status" id="status"></div>
+  </div>
+</main>
+
+<script>
+"use strict";
+/* ============ AES-256-ECB (PKCS7) ============ */
+const AES = (() => {
+  const S = [99,124,119,123,242,107,111,197,48,1,103,43,254,215,171,118,202,130,201,125,250,89,71,240,173,212,162,175,156,164,114,192,183,253,147,38,54,63,247,204,52,165,229,241,113,216,49,21,4,199,35,195,24,150,5,154,7,18,128,226,235,39,178,117,9,131,44,26,27,110,90,160,82,59,214,179,41,227,47,132,83,209,0,237,32,252,177,91,106,203,190,57,74,76,88,207,208,239,170,251,67,77,51,133,69,249,2,127,80,60,159,168,81,163,64,143,146,157,56,245,188,182,218,33,16,255,243,210,205,12,19,236,95,151,68,23,196,167,126,61,100,93,25,115,96,129,79,220,34,42,144,136,70,238,184,20,222,94,11,219,224,50,58,10,73,6,36,92,194,211,172,98,145,149,228,121,231,200,55,109,141,213,78,169,108,86,244,234,101,122,174,8,186,120,37,46,28,166,180,198,232,221,116,31,75,189,139,138,112,62,181,102,72,3,246,14,97,53,87,185,134,193,29,158,225,248,152,17,105,217,142,148,155,30,135,233,206,85,40,223,140,161,137,13,191,230,66,104,65,153,45,15,176,84,187,22];
+  const IS = new Uint8Array(256); for (let i=0;i<256;i++) IS[S[i]]=i;
+  const RC = [1,2,4,8,16,32,64,128,27,54,108,216,171,77];
+  const xt = x => ((x<<1) ^ ((x&0x80)?0x1b:0)) & 0xff;
+  const mul = (a,b) => { let r=0; while(b){ if(b&1) r^=a; a=xt(a); b>>=1; } return r; };
+  const rotw = x => ((x<<8)|(x>>>24))>>>0;
+  const subw = x => ((S[x>>>24]<<24)|(S[(x>>>16)&0xff]<<16)|(S[(x>>>8)&0xff]<<8)|S[x&0xff])>>>0;
+  function expandKey(key){ // 32 bytes -> 60 words (AES-256, 14 rounds)
+    const w = new Array(60);
+    for (let i=0;i<8;i++) w[i] = ((key[4*i]<<24)|(key[4*i+1]<<16)|(key[4*i+2]<<8)|key[4*i+3])>>>0;
+    for (let i=8;i<60;i++){
+      let t = w[i-1];
+      if (i%8===0) t = (subw(rotw(t)) ^ (RC[i/8-1]<<24))>>>0;
+      else if (i%8===4) t = subw(t);
+      w[i] = (w[i-8]^t)>>>0;
+    }
+    return w;
+  }
+  // state: 4 words, each word = one column (bytes 0..3 = column 0, rows 0..3)
+  function cryptBlock(b, w, dec){
+    let s = [0,1,2,3].map(i => ((b[4*i]<<24)|(b[4*i+1]<<16)|(b[4*i+2]<<8)|b[4*i+3])>>>0);
+    const ark = r => { for (let i=0;i<4;i++) s[i] = (s[i]^w[r*4+i])>>>0; };
+    const subShift = () => { // SubBytes + ShiftRows (forward)
+      s = s.map((col,i) => (
+        (S[col>>>24]<<24) | (S[(s[(i+1)%4]>>>16)&0xff]<<16) |
+        (S[(s[(i+2)%4]>>>8)&0xff]<<8) | S[s[(i+3)%4]&0xff]
+      )>>>0);
+    };
+    const invSubShift = () => { // InvShiftRows + InvSubBytes
+      s = s.map((col,i) => (
+        (IS[col>>>24]<<24) | (IS[(s[(i+3)%4]>>>16)&0xff]<<16) |
+        (IS[(s[(i+2)%4]>>>8)&0xff]<<8) | IS[s[(i+1)%4]&0xff]
+      )>>>0);
+    };
+    const mix = () => { s = s.map(col => {
+      const a0=col>>>24, a1=(col>>>16)&0xff, a2=(col>>>8)&0xff, a3=col&0xff;
+      return ((xt(a0)^(xt(a1)^a1)^a2^a3)<<24 | (a0^xt(a1)^(xt(a2)^a2)^a3)<<16 |
+              (a0^a1^xt(a2)^(xt(a3)^a3))<<8 | ((xt(a0)^a0)^a1^a2^xt(a3)))>>>0;
+    });};
+    const invMix = () => { s = s.map(col => {
+      const a0=col>>>24, a1=(col>>>16)&0xff, a2=(col>>>8)&0xff, a3=col&0xff;
+      return ((mul(a0,14)^mul(a1,11)^mul(a2,13)^mul(a3,9))<<24 |
+              (mul(a0,9)^mul(a1,14)^mul(a2,11)^mul(a3,13))<<16 |
+              (mul(a0,13)^mul(a1,9)^mul(a2,14)^mul(a3,11))<<8 |
+              (mul(a0,11)^mul(a1,13)^mul(a2,9)^mul(a3,14)))>>>0;
+    });};
+    if (!dec){
+      ark(0);
+      for (let r=1;r<=14;r++){ subShift(); if (r<14) mix(); ark(r); }
+    } else {
+      ark(14);
+      for (let r=13;r>=1;r--){ invSubShift(); ark(r); invMix(); }
+      invSubShift(); ark(0);
+    }
+    const out = new Uint8Array(16);
+    s.forEach((col,i)=>{ out[4*i]=col>>>24; out[4*i+1]=(col>>>16)&0xff; out[4*i+2]=(col>>>8)&0xff; out[4*i+3]=col&0xff; });
+    return out;
+  }
+  function ecb(data, keyBytes, dec){
+    const w = expandKey(keyBytes);
+    const out = new Uint8Array(data.length);
+    for (let i=0;i<data.length;i+=16) out.set(cryptBlock(data.slice(i,i+16), w, dec), i);
+    return out;
+  }
+  return {
+    decrypt: (data,key)=>ecb(data,key,true),
+    encrypt: (data,key)=>ecb(data,key,false),
+  };
+})();
+
+/* ============ Base64 ============ */
+const B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+function b64decode(str){
+  const out=[]; let buf=0,bits=0;
+  for (const ch of str){
+    if (ch==="=") break;
+    const v=B64.indexOf(ch); if(v<0) continue;
+    buf=(buf<<6)|v; bits+=6;
+    if(bits>=8){ bits-=8; out.push((buf>>bits)&0xff); }
+  }
+  return new Uint8Array(out);
+}
+function b64encode(bytes){
+  let s="";
+  for(let i=0;i<bytes.length;i+=3){
+    const a=bytes[i],b=bytes[i+1],c=bytes[i+2];
+    s+=B64[a>>2]+B64[((a&3)<<4)|(b===undefined?0:b>>4)]+(b===undefined?"=":B64[((b&15)<<2)|(c===undefined?0:c>>6)])+(c===undefined?"=":B64[c&63]);
+  }
+  return s;
+}
+
+/* ============ 存档格式（BinaryFormatter 风格包装） ============ */
+const KEY = new TextEncoder().encode("UKu52ePUBwetZ9wNX88o54dnfKRu0T1l");
+function read7bit(bytes, off){
+  let r=0,s=0;
+  for(;;){ const x=bytes[off++]; r|=(x&0x7f)<<s; s+=7; if(!(x&0x80)) break; }
+  return [r,off];
+}
+function write7bit(n){
+  const out=[];
+  for(;;){ let x=n&0x7f; n>>>=7; if(n) out.push(x|0x80); else {out.push(x); break;} }
+  return out;
+}
+function decodeSave(bytes){
+  const head = bytes.slice(0,22);
+  let [len, off] = read7bit(bytes,22);
+  const b64 = new TextDecoder().decode(bytes.slice(off,off+len));
+  const tail = bytes.slice(off+len);
+  const enc = b64decode(b64);
+  const dec = AES.decrypt(enc, KEY);
+  const pad = dec[dec.length-1];
+  const json = new TextDecoder().decode(dec.slice(0,dec.length-pad));
+  return { data: JSON.parse(json), head, tail };
+}
+function encodeSave(data, head, tail){
+  const json = new TextEncoder().encode(JSON.stringify(data));
+  const pad = 16 - (json.length % 16);
+  const padded = new Uint8Array(json.length+pad);
+  padded.set(json); padded.fill(pad, json.length);
+  const enc = AES.encrypt(padded, KEY);
+  const b64 = new TextEncoder().encode(b64encode(enc));
+  const lenBytes = write7bit(b64.length);
+  const out = new Uint8Array(head.length + lenBytes.length + b64.length + tail.length);
+  out.set(head,0); out.set(lenBytes,head.length); out.set(b64,head.length+lenBytes.length); out.set(tail,head.length+lenBytes.length+b64.length);
+  return out;
+}
+
+/* ============ 游戏数据：场景重生点（提取自游戏 SceneTeleportMap） ============ */
+const RESPAWN_POINTS = {"Tut_01": ["Death Respawn Marker Init"], "Tut_03": ["RestBench"], "Tut_04": ["Death Respawn Marker", "RestBench"], "Tut_05": ["Death Respawn Marker"], "Mosstown_02": ["Death Respawn Marker"], "Mosstown_02c": ["RestBench"], "Mosstown_03": ["RestBench"], "Crawl_05": ["Death Respawn Marker"], "Crawl_08": ["RestBench"], "Belltown": ["RestBench"], "Belltown_Shrine": ["Death Respawn Marker", "RestBench"], "Belltown_Room_doctor": ["Death Respawn Marker"], "Bellway_03": ["RestBench"], "Bellway_08": ["RestBench"], "Bellway_City": ["RestBench"], "Bellway_Peak": ["RestBench"], "Bellway_Shadow": ["RestBench"], "Bellway_Aqueduct": ["RestBench"], "Bellshrine": ["RestBench"], "Bellshrine_02": ["RestBench"], "Bellshrine_03": ["RestBench"], "Bellshrine_05": ["RestBench"], "Bellshrine_Enclave": ["Death Respawn Marker", "RestBench"], "Bellshrine_Coral": ["Death Respawn Marker", "RestBench"], "Bonetown": ["RestBench", "Death Respawn Marker", "Death Respawn Marker Church"], "Bonegrave": ["Death Respawn Marker"], "Bone_01c": ["RestBench"], "Bone_04": ["RestBench"], "Bone_05": ["Silk Heart Memory Respawn Marker"], "Bone_10": ["RestBench"], "Bone_12": ["RestBench", "RestBench (1)"], "Ant_17": ["RestBench"], "Ant_19": ["Death Respawn Marker"], "Ant_20": ["Death Respawn Marker"], "Ant_Queen": ["Death Respawn Marker"], "Dock_01": ["RestBench"], "Dock_06_Church": ["RestBench (1)"], "Dock_10": ["RestBench"], "Room_Forge": ["RestBench"], "Bone_East_04c": ["Cage Kill Respawn Marker"], "Bone_East_05": ["Death Respawn Marker"], "Bone_East_08": ["Silk Heart Memory Respawn Marker"], "Bone_East_10_Room": ["RestBench"], "Bone_East_15": ["RestBench"], "Bone_East_18b": ["TrapBench"], "Bone_East_Weavehome": ["RestBench"], "Bone_East_Umbrella": ["RestBench"], "Halfway_01": ["RestBench"], "Greymoor_02": ["RestBench"], "Greymoor_05": ["Cage Kill Respawn Marker"], "Greymoor_08": ["Death Respawn Marker NonLethal", "RestBench"], "Greymoor_08_caravan": ["Death Respawn Marker", "RestBench"], "Greymoor_20b": ["Death Respawn Marker"], "Greymoor_20c": ["Death Respawn Marker"], "Greymoor_22": ["Death Respawn Marker"], "Dust_10": ["RestBench"], "Dust_11": ["RestBench (1)", "RestBench"], "Dust_Maze_08_completed": ["Death Respawn Marker"], "Dust_Maze_09_entrance": ["Death Respawn Marker", "RestBench"], "Organ_01": ["RestBench", "Death Respawn Marker"], "Shadow_15": ["RestBench"], "Shadow_18": ["RestBench"], "Shadow_21": ["Cage Kill Respawn Marker"], "Shadow_24": ["Death Respawn Marker"], "Wisp_03": ["Death Respawn Marker"], "Wisp_04": ["RestBench"], "Shellwood_01b": ["RestBench"], "Shellwood_08c": ["RestBench"], "Shellwood_10": ["Death Respawn Marker"], "Shellwood_11b": ["Death Respawn Marker"], "Shellwood_25": ["Death Respawn Marker"], "Shellwood_25b": ["Death Respawn Marker"], "Shellwood_11b_Memory": ["Death Respawn Marker"], "Coral_02": ["RestBench"], "Coral_Tower_01": ["Death Respawn Marker", "RestBench"], "Coral_Judge_Arena": ["Death Respawn Marker", "RestBench"], "Under_01": ["Death Respawn Marker"], "Under_01b": ["RestBench"], "Under_07b": ["RestBench"], "Under_08": ["RestBench", "RestBench (1)", "RestBench (2)"], "Under_17": ["Death Respawn Marker Architect Door", "RestBench"], "Under_18": ["Death Respawn Marker"], "Under_20": ["Death Respawn Marker"], "Song_01b": ["RestBench"], "Song_10": ["RestBench"], "Song_18": ["RestBench"], "Song_Enclave": ["RestBench"], "Tube_Hub": ["RestBench"], "Ward_01": ["RestBench"], "Ward_02": ["Silk Heart Memory Respawn Marker"], "Library_08": ["RestBench"], "Library_09": ["Death Respawn Marker Garmond"], "Library_10": ["RestBench"], "Hang_01": ["RestBench"], "Hang_06b": ["RestBench"], "Arborium_04": ["RestBench"], "Cog_09": ["Death Respawn Marker"], "Cog_Bench": ["RestBench"], "Cog_Dancers": ["Interim Respawn Marker"], "Song_Tower_01": ["Silk Heart Memory Respawn Marker"], "Song_Tower_Destroyed": ["Death Respawn Marker", "Death Respawn Marker Init"], "Cradle_03_Destroyed": ["Death Respawn Marker"], "Slab_03": ["Caged Respawn Marker", "Cage Broken Respawn Marker"], "Slab_06": ["RestBench"], "Slab_10b": ["Death Respawn Marker"], "Slab_10c": ["Death Respawn Marker"], "Slab_16": ["RestBench", "RestBench (1)"], "Slab_20": ["RestBench"], "Peak_02": ["RestBench"], "Peak_07": ["RestBench", "Death Respawn Marker Pinstress"], "Peak_08b": ["Death Respawn Marker"], "Peak_12": ["RestBench (1)"], "Weave_07": ["RestBench"], "Weave_10": ["Death Respawn Marker"], "Clover_01": ["Death Respawn Marker"], "Clover_01b": ["Death Respawn Marker"], "Clover_20": ["RestBench"], "Abyss_08": ["Death Respawn Marker"], "Abyss_09": ["RestBench", "Death Respawn Marker"], "Abyss_12": ["RestBench"], "Room_Pinstress": ["RestBench"], "Room_Huntress": ["RestBench"], "Room_Diving_Bell": ["RestBench"], "Room_Diving_Bell_Abyss": ["RestBench"], "Room_Diving_Bell_Abyss_Fixed": ["RestBench"], "Sprintmaster_Cave": ["RestBench"], "Chapel_Wanderer": ["Death Respawn Marker"], "Memory_Needolin": ["Death Respawn Marker"], "Memory_First_Sinner": ["Death Respawn Marker"], "Memory_Silk_Heart_BellBeast": ["Death Respawn Marker"], "Memory_Silk_Heart_WardBoss": ["Death Respawn Marker"], "Memory_Silk_Heart_LaceTower": ["Death Respawn Marker"], "Memory_Coral_Tower": ["Death Respawn Marker"], "Memory_Ant_Queen": ["Death Respawn Marker"], "Belltown_Room_Spare": ["RestBench"], "Shadow_08": ["RestBench"], "Bone_East_26": ["TrapBench"], "Bone_East_27": ["RestBench"], "Memory_Red": ["Death Respawn Marker"], "Aqueduct_05_caravan": ["RestBench", "Death Respawn Marker"], "Aqueduct_05_pre": ["RestBench"], "Aqueduct_05_festival": ["RestBench Festival"]};
+
+const ALL_CRESTS = ["Hunter","Hunter_v2","Hunter_v3","Reaper","Wanderer","Warrior","Toolmaster","Witch","Spell","Cursed"];
+const SKILL_BOOLS = {
+  hasDash:"疾风步（冲刺）", hasWalljump:"蛛形攀墙", hasDoubleJump:"二段跳斗篷",
+  hasBrolly:"漂泊者斗篷（滑翔）", hasHarpoonDash:"飞针冲刺", hasSuperJump:"灵丝升腾",
+  hasChargeSlash:"蓄力斩", hasNeedolin:"织忆弦针",
+  hasSilkSpecial:"丝之矛", hasThreadSphere:"丝线风暴", hasNeedleThrow:"十字绣",
+  hasSilkCharge:"丝刃冲刺", hasSilkBomb:"符文之怒", hasSilkBossNeedle:"苍白之钉",
+};
+const SKILL_TOOLS = ["Silk Spear","Thread Sphere","Parry","Silk Charge","Silk Bomb","Silk Boss Needle"];
+
+/* ============ UI ============ */
+const $ = id => document.getElementById(id);
+let saveData=null, saveHead=null, saveTail=null, fileName="user1.dat";
+
+const drop=$("drop"), fileInput=$("file");
+drop.onclick=()=>fileInput.click();
+drop.ondragover=e=>{e.preventDefault();drop.classList.add("over");};
+drop.ondragleave=()=>drop.classList.remove("over");
+drop.ondrop=e=>{e.preventDefault();drop.classList.remove("over");if(e.dataTransfer.files[0])loadFile(e.dataTransfer.files[0]);};
+fileInput.onchange=()=>{if(fileInput.files[0])loadFile(fileInput.files[0]);};
+
+function setStatus(msg, ok){
+  const s=$("status"); s.textContent=msg; s.className="status "+(ok?"ok":"err");
+}
+
+function loadFile(file){
+  fileName=file.name;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    try{
+      const dec=decodeSave(new Uint8Array(rd.result));
+      saveData=dec.data; saveHead=dec.head; saveTail=dec.tail;
+      populate();
+      $("editor").classList.remove("hidden");
+      setStatus("存档读取成功："+fileName,true);
+    }catch(err){
+      setStatus("读取失败："+err.message,false);
+      $("editor").classList.add("hidden");
+    }
+  };
+  rd.readAsArrayBuffer(file);
+}
+
+function fillSelect(sel, items, current){
+  sel.innerHTML="";
+  for(const it of items){
+    const o=document.createElement("option");
+    o.value=it; o.textContent=it;
+    sel.appendChild(o);
+  }
+  if(current && !items.includes(current)){
+    const o=document.createElement("option");
+    o.value=current; o.textContent=current+"（当前）";
+    sel.appendChild(o);
+  }
+  if(current) sel.value=current;
+}
+
+function populate(){
+  const pd=saveData.playerData||{};
+  $("basicInfo").textContent=`版本 ${pd.version||"?"} ・ 游戏时长 ${(pd.playTime||0).toFixed(0)} 秒 ・ 当前纹章 ${pd.CurrentCrestID||"?"}`;
+  // 出生点
+  const scenes=Object.keys(RESPAWN_POINTS).sort();
+  fillSelect($("respawnScene"), scenes, pd.respawnScene);
+  fillMarkers();
+  $("respawnType").value=String(pd.respawnType??1);
+  // 数值
+  $("health").value=pd.health??5;
+  $("maxHealth").value=pd.maxHealth??5;
+  $("nailUpgrades").value=String(pd.nailUpgrades??0);
+  $("silkMax").value=pd.silkMax??9;
+  renderUnlockState();
+}
+
+function fillMarkers(){
+  const scene=$("respawnScene").value;
+  const pd=saveData.playerData||{};
+  const markers=(RESPAWN_POINTS[scene]||[]).slice();
+  fillSelect($("respawnMarker"), markers, pd.respawnMarkerName);
+  // 自动联动 respawnType
+  syncRespawnType();
+}
+function syncRespawnType(){
+  const m=$("respawnMarker").value||"";
+  $("respawnType").value = m.includes("Bench") ? "1" : "0";
+}
+$("respawnScene").onchange=fillMarkers;
+$("respawnMarker").onchange=syncRespawnType;
+
+function renderUnlockState(){
+  const pd=saveData.playerData||{};
+  const skills=Object.entries(SKILL_BOOLS).map(([k,name])=>`<span class="tag">${name} <b>${pd[k]?"✓":"✗"}</b></span>`).join("");
+  const crests=(pd.ToolEquips?.savedData||[]).filter(t=>ALL_CRESTS.includes(t.Name)&&t.Data?.IsUnlocked).length;
+  $("unlockTags").innerHTML=skills+`<div style="margin-top:6px"><span class="tag">纹章 <b>${crests} / ${ALL_CRESTS.length}</b></span></div>`;
+}
+
+$("btnSkills").onclick=()=>{
+  const pd=saveData.playerData;
+  for(const k of Object.keys(SKILL_BOOLS)) pd[k]=true;
+  pd.HasSeenDash=true; pd.HasSeenWalljump=true; pd.HasSeenSuperJump=true; pd.HasSeenHarpoon=true;
+  const tools=(pd.Tools??={savedData:[]}).savedData??=(pd.Tools.savedData=[]);
+  for(const name of SKILL_TOOLS){
+    let t=tools.find(t=>t.Name===name);
+    if(!t){ t={Name:name,Data:{}}; tools.push(t); }
+    Object.assign(t.Data,{IsUnlocked:true,IsHidden:false,HasBeenSeen:true,HasBeenSelected:false,AmountLeft:0});
+  }
+  renderUnlockState();
+  setStatus("已习得所有技能（记得点击底部"保存并下载"）",true);
+};
+
+$("btnCrests").onclick=()=>{
+  const pd=saveData.playerData;
+  const eq=(pd.ToolEquips??={savedData:[]}).savedData??=(pd.ToolEquips.savedData=[]);
+  for(const name of ALL_CRESTS){
+    let t=eq.find(t=>t.Name===name);
+    if(!t){ t={Name:name,Data:{}}; eq.push(t); }
+    t.Data.IsUnlocked=true; t.Data.DisplayNewIndicator=false;
+  }
+  renderUnlockState();
+  setStatus("已解锁所有纹章（记得点击底部"保存并下载"）",true);
+};
+
+$("btnSave").onclick=()=>{
+  try{
+    const pd=saveData.playerData;
+    // 出生点
+    pd.respawnScene=$("respawnScene").value;
+    pd.respawnMarkerName=$("respawnMarker").value;
+    pd.respawnType=parseInt($("respawnType").value);
+    if(pd.respawnType===1){
+      pd.atBench=true;
+      for(const lst of ["scenesVisited","scenesEncounteredBench"]){
+        if(Array.isArray(pd[lst])&&!pd[lst].includes(pd.respawnScene)) pd[lst].push(pd.respawnScene);
+      }
+    }
+    // 血量
+    pd.health=Math.max(1,parseInt($("health").value)||1);
+    const mh=Math.max(1,parseInt($("maxHealth").value)||1);
+    pd.maxHealth=mh; pd.maxHealthBase=mh; pd.prevHealth=mh;
+    if(pd.health>mh) pd.health=mh;
+    // 伤害 / 灵丝
+    pd.nailUpgrades=parseInt($("nailUpgrades").value)||0;
+    pd.silkMax=Math.max(0,parseInt($("silkMax").value)||0);
+    if((pd.silk??0)>pd.silkMax) pd.silk=pd.silkMax;
+
+    const out=encodeSave(saveData,saveHead,saveTail);
+    const blob=new Blob([out],{type:"application/octet-stream"});
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download=fileName;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    setStatus("已生成修改后的 "+fileName+"，请覆盖原存档文件（建议先备份原文件）",true);
+  }catch(err){
+    setStatus("保存失败："+err.message,false);
+  }
+};
+</script>
+</body>
+</html>
