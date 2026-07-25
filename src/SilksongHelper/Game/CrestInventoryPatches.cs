@@ -21,6 +21,10 @@ internal static class CrestInventoryPatches
                 foreach (var synth in CustomCrestRegistry.All)
                     if (!__result.Contains(synth))
                         __result.Add(synth);
+                DesignedCrests.EnsureBuilt();
+                foreach (var d in DesignedCrests.All)
+                    if (!__result.Contains(d))
+                        __result.Add(d);
             }
             catch (Exception e) { Plugin.Log.LogWarning($"GetAllCrests postfix: {e.Message}"); }
         }
@@ -35,7 +39,10 @@ internal static class CrestInventoryPatches
             {
                 if (__result != null) return;
                 if (__args == null || __args.Length == 0) return;
-                __result ??= CustomCrestRegistry.Get(__args[0] as string);
+                var name = __args[0] as string;
+                DesignedCrests.EnsureBuilt();
+                __result ??= DesignedCrests.Get(name);
+                __result ??= CustomCrestRegistry.Get(name);
             }
             catch (Exception e) { Plugin.Log.LogWarning($"GetCrestByName postfix: {e.Message}"); }
         }
@@ -49,6 +56,8 @@ internal static class CrestInventoryPatches
             try
             {
                 if (__instance == null) return;
+                var designed = DesignedCrests.DisplayNameFor(__instance.CrestData?.name);
+                if (designed != null) { __result = designed; return; }
                 var custom = CustomCrestRegistry.CustomNameFor(__instance.CrestData);
                 if (custom != null) __result = custom;
             }
@@ -65,6 +74,7 @@ internal static class CrestInventoryPatches
             {
                 var crestData = __instance?.CrestData;
                 if (crestData == null) return;
+                if (DesignedCrests.IsDesigned(crestData.name)) { __result = true; return; }
                 if (CustomCrestRegistry.IsSentinel(crestData.name)) __result = true;
             }
             catch (Exception e) { Plugin.Log.LogWarning($"IsUnlocked postfix: {e.Message}"); }

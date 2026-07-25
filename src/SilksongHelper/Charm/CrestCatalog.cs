@@ -55,6 +55,11 @@ public static class CrestCatalog
         var list = TryReadLiveCrests();
         if (list.Count == 0)
             list = BuildFallbackCrests();
+        else
+        {
+            DesignedCrests.EnsureBuilt();
+            list.AddRange(DesignedCrests.AllInfos());
+        }
         _crests = list;
         _byId = list.Where(c => !string.IsNullOrEmpty(c.Id)).ToDictionary(c => c.Id);
         _options = new Dictionary<CharmPart, List<CrestPartOption>>();
