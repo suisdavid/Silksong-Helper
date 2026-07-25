@@ -82,6 +82,14 @@ public static class ProceduralTextures
                         if (shaft || head) c = baseCol;
                         break;
                     }
+                    case CharmPart.UpSlash:
+                    {
+                        float rise = Mathf.Lerp(Size * 0.30f, -Size * 0.30f, t);
+                        bool shaft = Mathf.Abs(p.y - rise) < 3f && Mathf.Abs(p.x) < 3f;
+                        bool head = Mathf.Abs(p.y - (rise + 8f)) < 5f && Mathf.Abs(p.x) < 10f;
+                        if (shaft || head) c = baseCol;
+                        break;
+                    }
                     case CharmPart.PostHealEffect:
                     {
                         float rot = t * Mathf.PI * 2f;
