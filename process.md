@@ -24,6 +24,29 @@
    - 编辑器滚动条数组长度由硬编码 6 改为跟随 `NonSlotParts.Count`，避免再加模块时越界。
 2. **构建验证通过**：环境中没有 .NET SDK（Windows 侧只有运行时），在 `/tmp/opencode/dotnet` 临时安装 .NET 8 SDK，以 `GameDir=../Silksong` 构建，`0 警告 0 错误`，DLL 已自动部署到 `../Silksong/BepInEx/plugins/SilksongHelper/`。
 
+## 进展 2（2026-07-25）：存档修改（为实机测试做准备）
+
+**目标**：游戏内还没有坐过长椅，无法测试"坐长椅换纹章"链路。直接修改存档。
+
+**存档格式研究结论**（参考社区项目 just-addwater/silksong-saveeditor 与反编译验证）：
+- 路径：`%USERPROFILE%\AppData\LocalLow\Team Cherry\Hollow Knight Silksong\default\user1.dat`
+- 结构：.NET BinaryFormatter 风格 22 字节头 + 7-bit 变长长度前缀 + Base64 字符串 + 0x0B 尾
+- 加密：Base64 解码后为 **AES-256-ECB（PKCS7）**，密钥为 ASCII `UKu52ePUBwetZ9wNX88o54dnfKRu0T1l`，解密后是 JSON（playerData / sceneData / ToolEquips / Tools）
+- 长椅重生机制（反编译 `HeroController`/`PlayerData`/`SceneTeleportMap` 确认）：
+  - `respawnScene` + `respawnMarkerName` + `respawnType=1` → 在长椅上醒来（respawnType=1 且 marker 物体带 "Bench Control" FSM）
+  - `resources.assets` 内嵌 SceneTeleportMap 可解析出每个场景合法的重生点；骨底镇 `Bonetown` 的重生点含 `RestBench`
+
+**已修改内容**（原文件已备份为 `user1.dat.bak_before_edit`）：
+1. 出生点 → `Bonetown` / `RestBench`（骨底镇长椅，开局最近的城镇长椅）
+2. 二段跳 `hasDoubleJump`、冲刺 `hasDash`、飞针冲刺 `hasHarpoonDash`（即"丝针"类能力）
+3. 灵丝技能"丝之矛"：Tools 列表加入 `Silk Spear` 并设 `hasSilkSpecial`
+4. 所有纹章：ToolEquips 列表补齐 10 个纹章（Hunter / Hunter_v2 / Hunter_v3 / Reaper / Wanderer / Warrior / Toolmaster / Witch / Spell / Cursed）并全部 `IsUnlocked`
+
+**难点**：
+- "丝针"在中文 wiki 无此确切名称，按最接近的能力处理为丝之矛 + 飞针冲刺（两者都解锁，覆盖两种理解）
+- 存档字段必须与游戏 `PlayerData` 完全一致，多写不存在的字段有反序列化风险（如 HasSeenDoubleJump 并不存在，已避免）
+- 写回时 7-bit 长度前缀需重算，已做完整解密→修改→加密→回读验证（round-trip 通过）
+
 ## 已实现的架构
 
 - `Plugin.cs`：BepInEx 入口，初始化目录/存档/Harmony 补丁。
