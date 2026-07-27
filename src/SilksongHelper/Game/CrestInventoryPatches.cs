@@ -92,12 +92,19 @@ internal static class CrestInventoryPatches
                 var customId = CustomCrestRegistry.IdFromSentinel(id);
                 if (customId != null)
                 {
+                    DesignedCrests.RestoreRuntime();
                     var charm = Plugin.SaveData.Charms.FirstOrDefault(c => c.Id == customId);
                     if (charm != null) Plugin.Applier.ApplyOverrides(charm, __instance);
+                }
+                else if (DesignedCrests.IsDesigned(id))
+                {
+                    Plugin.Applier.RestoreOverrides();
+                    DesignedCrests.ApplyRuntime(id!, __instance);
                 }
                 else
                 {
                     Plugin.Applier.RestoreOverrides();
+                    DesignedCrests.RestoreRuntime();
                 }
             }
             catch (Exception e) { Plugin.Log.LogWarning($"ResetAllCrestState postfix: {e.Message}"); }

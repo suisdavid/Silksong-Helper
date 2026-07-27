@@ -42,6 +42,7 @@ public sealed class Plugin : BaseUnityPlugin
     private void OnDestroy()
     {
         Applier?.RestoreOverrides();
+        DesignedCrests.RestoreRuntime();
         _harmony?.UnpatchSelf();
     }
 }
