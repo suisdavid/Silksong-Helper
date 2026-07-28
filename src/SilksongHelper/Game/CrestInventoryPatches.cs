@@ -89,22 +89,36 @@ internal static class CrestInventoryPatches
             try
             {
                 var id = CurrentCrestId();
-                // 先统一还原旧状态（还原时会保留当前激活配置组的根对象），再应用新纹章
-                Plugin.Applier.RestoreOverrides(__instance);
-                DesignedCrests.RestoreRuntime();
+                // id 解析失败（瞬态）时什么都不做——避免误还原当前已生效的修改
+                if (id == null) return;
 
                 var customId = CustomCrestRegistry.IdFromSentinel(id);
                 if (customId != null)
                 {
+                    if (Plugin.Applier.ActiveCharmId == customId) return; // 已生效，不重复操作
+                    RestoreAll(__instance);
                     var charm = Plugin.SaveData.Charms.FirstOrDefault(c => c.Id == customId);
                     if (charm != null) Plugin.Applier.ApplyOverrides(charm, __instance);
                 }
                 else if (DesignedCrests.IsDesigned(id))
                 {
+                    if (DesignedCrests.AppliedId == id) return; // 已生效
+                    RestoreAll(__instance);
                     DesignedCrests.ApplyRuntime(id!, __instance);
+                }
+                else
+                {
+                    // 切回普通纹章：确认切换到别的纹章才还原
+                    RestoreAll(__instance);
                 }
             }
             catch (Exception e) { Plugin.Log.LogWarning($"ResetAllCrestState postfix: {e.Message}"); }
+        }
+
+        private static void RestoreAll(HeroController hero)
+        {
+            Plugin.Applier.RestoreOverrides(hero);
+            DesignedCrests.RestoreRuntime(hero);
         }
 
         private static string? CurrentCrestId()
