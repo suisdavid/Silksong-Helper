@@ -168,6 +168,25 @@ designed crest '疾风纹章' applied (16 fields)
 - 斩击预制体挂在各纹章自己的 ActiveRoot 下，移植引用后必须激活来源根对象；恢复时又要避免误关正在使用的根对象——与 CharmApplier 的模块混合机制同一套模式，已验证可行。
 - `ResetAllCrestState` 触发时机比预想多得多（每次攻击、工具栏变化都会调 UpdateConfig），所有运行时修改都必须幂等可重入。
 
+## 进展 8（2026-07-27）：完全自创攻击动作「旋风丝刃」（v0.6.0）
+
+### 需求
+
+用户明确要求：新纹章的攻击动作必须是**自己设计的全新动作**，不能来自漫游者/收割者/任何已有纹章（v0.5.0 的"移植其他纹章动画"方案被否决，已移除 GroupSwaps 机制）。
+
+### 自创招式「旋风丝刃」（Silk Cyclone）
+
+装备疾风纹章后进行**水平攻击**时，原版斩击被完全拦截（Harmony prefix `NailSlash.StartSlash` return false），替换为自创招式：织针化作两片丝刃月牙，环绕大黄蜂全身高速旋转两周（0.5 秒），对四周 1.9 米内所有敌人造成多段伤害并径向击退。
+
+- **动画全新**：16 帧月牙丝刃旋转动画全部由 `ProceduralTextures.BuildCyclone` 程序化绘制（角向羽化+径向渐变+外缘刀锋亮线），不取自任何游戏资产；已用 Python 复刻算法生成预览图做视觉校验。
+- **伤害逻辑自实现**：`Physics2D.OverlapCircleAll` + `HealthManager.Hit(HitInstance)`（反射构造：AttackType=Nail、伤害=织针×0.6、径向击退 CircleDirection），同一敌人 0.24s 受击间隔，最多 3 个旋风并存。
+- **安全拦截**：只拦截 normal/alternate 水平斩；上劈/下劈/冲刺/蓄力保留漫游者基础动作+提速+青色染色。cState.attacking 由计时器驱动，跳过 StartSlash 无副作用（反编译确认）。
+- 技术要点：普通 `SpriteRenderer`（sortingOrder=100）直接渲染，无需 tk2d 资产；每帧跟随英雄位置（不父子绑定，避免朝向翻转影响）；`HitInstance` 为全局命名空间结构体，反射装箱传参。
+
+### 参考
+
+- 用户提供的视频为丝之歌源码解析（架构/移动逻辑），本项目攻击链路结论均来自本地反编译（ilspycmd）验证。
+
 ## 已实现的架构
 
 - `Plugin.cs`：BepInEx 入口，初始化目录/存档/Harmony 补丁。

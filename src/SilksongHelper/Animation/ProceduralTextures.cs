@@ -15,6 +15,68 @@ public static class ProceduralTextures
         return frames;
     }
 
+    /// <summary>
+    /// 自创招式「旋风丝刃」的动画帧：两片相对的丝刃月牙环绕中心旋转。
+    /// 每帧旋转 step 度，完全是程序化绘制的全新动画，不取自任何游戏资产。
+    /// </summary>
+    public static Texture2D[] BuildCyclone(int frameCount = 16, int size = 128)
+    {
+        var frames = new Texture2D[frameCount];
+        for (int f = 0; f < frameCount; f++)
+            frames[f] = DrawCycloneFrame(size, f * (720f / frameCount));
+        return frames;
+    }
+
+    private static Texture2D DrawCycloneFrame(int size, float angleDeg)
+    {
+        var tex = new Texture2D(size, size, TextureFormat.RGBA32, false) { filterMode = FilterMode.Bilinear };
+        var px = new Color32[size * size];
+        float half = size * 0.5f;
+        var bladeCol = new Color(0.55f, 0.95f, 1f);   // 疾风青蓝
+        float rInner = size * 0.22f, rOuter = size * 0.44f;
+        const float bladeWidth = 42f;                  // 月牙角宽（度）
+
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                float dx = x - half, dy = y - half;
+                float r = Mathf.Sqrt(dx * dx + dy * dy);
+                Color c = new Color(0, 0, 0, 0);
+                if (r >= rInner && r <= rOuter)
+                {
+                    float ang = Mathf.Atan2(dy, dx) * Mathf.Rad2Deg;
+                    for (int b = 0; b < 2; b++)
+                    {
+                        float d = Mathf.Abs(Mathf.DeltaAngle(ang, angleDeg + b * 180f));
+                        if (d < bladeWidth)
+                        {
+                            // 角向羽化 + 径向外缘亮、内缘暗
+                            float feather = 1f - d / bladeWidth;
+                            feather *= feather;
+                            float radial = (r - rInner) / (rOuter - rInner);
+                            float glow = 0.35f + 0.65f * radial;
+                            float a = feather * glow;
+                            if (a > c.a)
+                                c = new Color(bladeCol.r, bladeCol.g, bladeCol.b, a);
+                        }
+                    }
+                    // 外缘亮线（刀锋）
+                    float edge = Mathf.Abs(r - rOuter);
+                    float dEdge = Mathf.Min(
+                        Mathf.Abs(Mathf.DeltaAngle(ang, angleDeg)),
+                        Mathf.Abs(Mathf.DeltaAngle(ang, angleDeg + 180f)));
+                    if (edge < 1.6f && dEdge < bladeWidth + 6f)
+                        c = new Color(1f, 1f, 1f, Mathf.Max(c.a, 0.9f));
+                }
+                px[y * size + x] = c;
+            }
+        }
+        tex.SetPixels32(px);
+        tex.Apply();
+        return tex;
+    }
+
     private static Texture2D DrawFrame(CharmPart part, float hue, int frame, int total)
     {
         var tex = new Texture2D(Size, Size, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point };

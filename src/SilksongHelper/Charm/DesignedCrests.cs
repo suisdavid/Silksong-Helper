@@ -25,31 +25,11 @@ public static class DesignedCrests
         public string BaseCrestId = "";
         public (string field, float mult)[] Mults = Array.Empty<(string, float)>();
         public (string field, object value)[] Overrides = Array.Empty<(string, object)>();
-        /// <summary>斩击预制体移植：(来源纹章id, 要复制的配置组字段)——真正换用别的纹章的攻击动画。</summary>
-        public (string srcCrestId, string[] fields)[] GroupSwaps = Array.Empty<(string, string[])>();
         /// <summary>斩击特效的缩放倍率（同时放大攻击判定范围），1 表示不变。</summary>
         public float SlashScale = 1f;
         /// <summary>斩击特效的染色（null 表示不染）。</summary>
         public Color? SlashTint;
     }
-
-    private static readonly string[] _normalSlashFields =
-    {
-        "<NormalSlash>k__BackingField", "<NormalSlashDamager>k__BackingField", "NormalSlashObject",
-        "<AlternateSlash>k__BackingField", "<AlternateSlashDamager>k__BackingField", "AlternateSlashObject",
-    };
-    private static readonly string[] _upSlashFields =
-    {
-        "<UpSlash>k__BackingField", "<UpSlashDamager>k__BackingField", "UpSlashObject",
-        "<AltUpSlash>k__BackingField", "<AltUpSlashDamager>k__BackingField", "AltUpSlashObject",
-    };
-    private static readonly string[] _downSlashFields =
-    {
-        "<DownSlash>k__BackingField", "<DownSlashDamager>k__BackingField", "DownSlashObject",
-        "<Downspike>k__BackingField",
-        "<AltDownSlash>k__BackingField", "<AltDownSlashDamager>k__BackingField", "AltDownSlashObject",
-        "<AltDownspike>k__BackingField",
-    };
 
     private static readonly Def[] _defs =
     {
@@ -57,7 +37,7 @@ public static class DesignedCrests
         {
             Id = "Gale",
             Name = "疾风纹章",
-            Description = "自设纹章：收割者的横扫普攻与上劈、野兽的强力下劈、漫游者的迅捷身法，全方位提速。",
+            Description = "自设纹章：水平攻击为独创招式「旋风丝刃」——丝刃环绕全身横扫四方；上劈/下劈/冲刺为迅捷流。",
             BaseCrestId = "Wanderer",
             Mults = new (string, float)[]
             {
@@ -81,16 +61,6 @@ public static class DesignedCrests
             SlashTint = new Color(0.55f, 0.95f, 1f), // 疾风青蓝
         },
     };
-
-    static DesignedCrests()
-    {
-        // 真正移植其他纹章的攻击动画：收割者的普攻/上劈 + 野兽的下劈
-        _defs[0].GroupSwaps = new (string, string[])[]
-        {
-            ("Reaper", _normalSlashFields.Concat(_upSlashFields).ToArray()),
-            ("Warrior", _downSlashFields),
-        };
-    }
 
     private static readonly Dictionary<string, ToolCrest> _crests = new();
     private static readonly Dictionary<string, object> _configs = new();
@@ -212,56 +182,8 @@ public static class DesignedCrests
         }
 
         _appliedId = id;
-        ApplyGroupSwaps(hero, active!, def);
         ApplySlashVisuals(active!, def);
         Plugin.Log.LogInfo($"designed crest '{def.Name}' applied ({n} fields).");
-    }
-
-    /// <summary>把其他纹章的斩击预制体（NailSlash/Damager/Object 引用）移植到当前配置组——真正换用不同的攻击动画。</summary>
-    private static void ApplyGroupSwaps(object hero, object activeGroup, Def def)
-    {
-        if (def.GroupSwaps.Length == 0) return;
-        var groups = new List<object>();
-        foreach (var fname in new[] { "configs", "specialConfigs" })
-            if (AccessTools.Field(hero.GetType(), fname)?.GetValue(hero) is Array arr)
-                foreach (var g in arr) groups.Add(g);
-
-        foreach (var (srcCrestId, fields) in def.GroupSwaps)
-        {
-            try
-            {
-                var mi = AccessTools.Method(typeof(ToolItemManager), nameof(ToolItemManager.GetCrestByName));
-                if (mi?.Invoke(null, new object?[] { srcCrestId }) is not ToolCrest srcCrest) continue;
-                var srcCfg = GetMember(srcCrest, "HeroConfig");
-                var srcGroup = groups.FirstOrDefault(g => ReferenceEquals(GetMember(g, "Config"), srcCfg));
-                if (srcGroup == null)
-                {
-                    Plugin.Log.LogWarning($"designed crest: source group '{srcCrestId}' not found.");
-                    continue;
-                }
-                int n = 0;
-                foreach (var fn in fields)
-                {
-                    var fi = AccessTools.Field(activeGroup.GetType(), fn);
-                    var fiSrc = AccessTools.Field(srcGroup.GetType(), fn);
-                    if (fi == null || fiSrc == null) continue;
-                    RecordOriginal(activeGroup, fn, fi);
-                    fi.SetValue(activeGroup, fiSrc.GetValue(srcGroup));
-                    n++;
-                }
-                // 激活来源纹章的根对象（斩击预制体挂在它下面）
-                if (AccessTools.Field(srcGroup.GetType(), "ActiveRoot")?.GetValue(srcGroup) is GameObject root && root != null)
-                {
-                    if (!_activatedRoots.Contains(root))
-                    {
-                        root.SetActive(true);
-                        _activatedRoots.Add(root);
-                    }
-                }
-                Plugin.Log.LogInfo($"designed crest: borrowed {n} attack objects from '{srcCrestId}'.");
-            }
-            catch (Exception e) { Plugin.Log.LogWarning($"group swap '{srcCrestId}': {e.Message}"); }
-        }
     }
 
     private static readonly string[] _slashObjectFields =

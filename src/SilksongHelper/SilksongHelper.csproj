@@ -62,6 +62,10 @@
       <HintPath>$(ManagedDir)/UnityEngine.AnimationModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="UnityEngine.Physics2DModule">
+      <HintPath>$(ManagedDir)/UnityEngine.Physics2DModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <Reference Include="UnityEngine.AudioModule">
       <HintPath>$(ManagedDir)/UnityEngine.AudioModule.dll</HintPath>
       <Private>false</Private>
