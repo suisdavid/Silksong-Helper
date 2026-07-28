@@ -118,6 +118,34 @@
 1. 「克隆配置」与「引用匹配」的矛盾：克隆保证不污染原版，但游戏按引用选配置组——最终方案是共享配置 + 运行时改值 + 精确还原。
 2. 共享资产的污染风险：tk2d 动画剪辑 fps、材质等都是共享资产，不能直接改；材质通过 `renderer.material`（自动实例化）+ 记录原色还原解决。
 
+## 进展 6（2026-07-27）：修复"换纹章后无法攻击"（v0.4.1）
+
+### 现象与定位
+
+用户实测：首次装备疾风纹章攻击正常（蓝色斩击 ✓）；但新建一个自定义纹章（ACM，借用了漫游者模块）后再换回疾风纹章 → 完全无法攻击。
+
+在 Mod 中埋了 `[DIAG]` 诊断补丁（Attack/UpdateConfig/NailSlash.StartSlash 日志），从用户实机日志拿到铁证：
+```
+applied custom charm overrides 'ACM' (59 fields)
+designed crest '疾风纹章' applied (16 fields)
+[DIAG] NailSlash.StartSlash on Slash active=False   ← 斩击对象处于禁用状态
+```
+攻击逻辑在跑（StartSlash 被调用），但斩击 GameObject 未激活 → 无动画无伤害。
+
+### 根因
+
+`CharmApplier.ActivateRoot` 会激活源纹章的配置组根对象（ACM 借了漫游者模块 → 漫游者根对象被记录进 `_activatedRoots`）。换回疾风纹章时，`HeroController.SetConfigGroup` 刚为疾风激活漫游者根对象，随后我们的 postfix 调用 `RestoreOverrides()` 把 `_activatedRoots` 里所有根对象 `SetActive(false)` —— **把当前正在使用的根对象误关了**。
+
+### 修复（v0.4.1）
+
+1. `CharmApplier.RestoreOverrides(hero)`：禁用根对象前，先解析 `CurrentConfigGroup.ActiveRoot` 并跳过它。
+2. `ResetCrestStatePatch`：把 `RestoreOverrides`/`RestoreRuntime` 统一提到分支之前执行（任何切换路径都先干净还原），再按纹章类型应用新状态。
+
+### 难点记录
+
+- 游戏侧日志无任何异常（攻击流程"正常"跑完），只有埋点诊断日志才能发现 `active=False`；反射操作共享配置组状态时，**恢复顺序与游戏自身的 SetConfigGroup 激活顺序**是关键。
+- 诊断补丁 `Game/DebugDiagPatches.cs` 暂保留用于下一轮实机验证，确认无误后应删除（刷日志较多）。
+
 ## 已实现的架构
 
 - `Plugin.cs`：BepInEx 入口，初始化目录/存档/Harmony 补丁。

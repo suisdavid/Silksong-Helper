@@ -71,7 +71,11 @@ public sealed class CharmApplier
         if (hero != null) ApplyOverrides(charm, hero);
     }
 
-    public void RestoreOverrides()
+    /// <summary>
+    /// 还原所有覆盖。若传入 hero，则跳过「当前激活配置组的根对象」——
+    /// 避免把游戏刚为当前纹章激活的 ActiveRoot 误关掉（会导致攻击完全失效）。
+    /// </summary>
+    public void RestoreOverrides(object? hero = null)
     {
         if (_activeId == null && _originals.Count == 0 && _activatedRoots.Count == 0) return;
         foreach (var (target, field, value) in _originals)
@@ -84,9 +88,21 @@ public sealed class CharmApplier
             catch (Exception e) { Plugin.Log.LogWarning($"restore {field}: {e.Message}"); }
         }
         _originals.Clear();
+
+        GameObject? keepActive = null;
+        if (hero != null)
+        {
+            try
+            {
+                var active = AccessTools.Property(hero.GetType(), "CurrentConfigGroup")?.GetValue(hero);
+                if (active != null)
+                    keepActive = AccessTools.Field(active.GetType(), "ActiveRoot")?.GetValue(active) as GameObject;
+            }
+            catch { }
+        }
         foreach (var go in _activatedRoots)
         {
-            try { if (go != null) go.SetActive(false); } catch { }
+            try { if (go != null && go != keepActive) go.SetActive(false); } catch { }
         }
         _activatedRoots.Clear();
         _activeId = null;
