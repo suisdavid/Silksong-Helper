@@ -15,7 +15,7 @@ public sealed class CycloneSlash : MonoBehaviour
     private const float Life = 0.5f;      // 持续时长
     private const float Fps = 32f;        // 帧率（16帧转2周）
     private const float Tick = 0.12f;     // 伤害判定间隔
-    private const float Radius = 1.9f;    // 伤害半径（世界单位）
+    private const float Radius = 1.3f;    // 伤害半径（与动画刃圈范围一致，不外溢）
     private const float HitCooldown = 0.24f; // 同一敌人受击间隔
     private const int MaxAlive = 3;
 
@@ -38,6 +38,7 @@ public sealed class CycloneSlash : MonoBehaviour
         c._rd = go.AddComponent<SpriteRenderer>();
         c._rd.sortingOrder = 100;
         go.transform.position = Center(hero);
+        go.transform.localScale = Vector3.one * 1.2f; // 动画刃圈 ≈ 1.2 米，与判定半径对齐
         GaleFx.PlayCycloneExtras(hero); // 精细补充层：冲击环+火花+逆向光尘
         _alive++;
     }

@@ -40,8 +40,8 @@ public sealed class SkyPillar : MonoBehaviour
         if (_t >= _nextTick)
         {
             _nextTick += Tick;
-            Vector2 center = (Vector2)_hero.transform.position + new Vector2(0, 2.4f);
-            foreach (var hm in GaleCombat.EnemiesInBox(center, new Vector2(1.5f, 3.6f)))
+            Vector2 center = (Vector2)_hero.transform.position + new Vector2(0, 1.5f);
+            foreach (var hm in GaleCombat.EnemiesInBox(center, new Vector2(1.1f, 2.2f)))
             {
                 if (!_hit.Add(hm.GetInstanceID())) continue;
                 GaleCombat.ApplyHit(hm, _hero.gameObject, GaleCombat.NailDamage(_hero, 0.5f), 90f, magnitude: 0.6f);
@@ -55,7 +55,7 @@ public sealed class SkyPillar : MonoBehaviour
 public sealed class MeteorDive : MonoBehaviour
 {
     private const float DiveSpeed = -24f, Timeout = 1.2f;
-    private const int WaveTicks = 6;
+    private const int WaveTicks = 4;
     private static bool _active;
 
     private HeroController _hero = null!;
@@ -99,12 +99,12 @@ public sealed class MeteorDive : MonoBehaviour
         {
             _nextWave += 0.06f;
             _wave++;
-            // 冲击波向两侧推进
-            float d = _wave * 0.55f;
+            // 冲击波向两侧推进（贴身短波，不横扫全场）
+            float d = _wave * 0.45f;
             foreach (float side in new[] { -1f, 1f })
             {
                 Vector2 front = _impactPos + new Vector2(side * d, 0.1f);
-                foreach (var hm in GaleCombat.EnemiesInCircle(front, 0.85f))
+                foreach (var hm in GaleCombat.EnemiesInCircle(front, 0.6f))
                 {
                     if (!_hit.Add(hm.GetInstanceID())) continue;
                     GaleCombat.ApplyHit(hm, _hero.gameObject, GaleCombat.NailDamage(_hero, 0.6f),
@@ -118,7 +118,7 @@ public sealed class MeteorDive : MonoBehaviour
     private void Impact()
     {
         GaleFx.PlayDiveImpact((Vector3)_impactPos);
-        foreach (var hm in GaleCombat.EnemiesInCircle(_impactPos, 1.7f))
+        foreach (var hm in GaleCombat.EnemiesInCircle(_impactPos, 1.15f))
         {
             if (!_hit.Add(hm.GetInstanceID())) continue;
             GaleCombat.ApplyHit(hm, _hero.gameObject, GaleCombat.NailDamage(_hero, 1f),
@@ -133,15 +133,18 @@ public sealed class MeteorDive : MonoBehaviour
     }
 }
 
-/// <summary>冲刺攻击：残影连突</summary>
+/// <summary>冲刺攻击：残影连突（带螺旋钻头突刺动画）</summary>
 public sealed class PhantomLunge : MonoBehaviour
 {
-    private const float Duration = 0.32f, Tick = 0.06f;
+    private const float Duration = 0.32f, Tick = 0.06f, DrillFps = 24f;
     private static bool _active;
+    private static Sprite[]? _drillFrames;
 
     private HeroController _hero = null!;
     private readonly HashSet<int> _hit = new();
     private float _t, _nextTick;
+    private GameObject? _drill;
+    private SpriteRenderer? _drillRd;
 
     public static void Start(HeroController hero)
     {
@@ -149,21 +152,51 @@ public sealed class PhantomLunge : MonoBehaviour
         _active = true;
         var c = hero.gameObject.AddComponent<PhantomLunge>();
         c._hero = hero;
+        c.SpawnDrill();
         GaleFx.PlayDashStab(hero);
+    }
+
+    private void SpawnDrill()
+    {
+        if (_drillFrames == null)
+        {
+            var texs = ProceduralTextures.BuildDrill(8, 128, 64);
+            _drillFrames = new Sprite[texs.Length];
+            for (int i = 0; i < texs.Length; i++)
+                _drillFrames[i] = Sprite.Create(texs[i], new Rect(0, 0, texs[i].width, texs[i].height),
+                    new Vector2(0.35f, 0.5f), 64f); // 枢轴偏后，针尖朝前伸出
+        }
+        _drill = new GameObject("GaleDrill");
+        _drillRd = _drill.AddComponent<SpriteRenderer>();
+        _drillRd.sortingOrder = 102;
+        _drill.transform.localScale = Vector3.one * 1.6f;
+    }
+
+    private void UpdateDrill()
+    {
+        if (_drill == null || _drillRd == null || _hero == null) return;
+        float facing = Mathf.Sign(_hero.transform.localScale.x);
+        _drill.transform.position = GaleFx.Center(_hero) + new Vector3(facing * 0.5f, 0f, 0f);
+        _drill.transform.rotation = Quaternion.Euler(0, 0, facing > 0 ? 0f : 180f);
+        _drillRd.sprite = _drillFrames![Mathf.FloorToInt(_t * DrillFps) % _drillFrames.Length];
+        var col = _drillRd.color;
+        col.a = _t > Duration - 0.1f ? Mathf.Max(0f, (Duration - _t) / 0.1f) : 1f;
+        _drillRd.color = col;
     }
 
     private void Update()
     {
         _t += Time.deltaTime;
-        if (_hero == null) { _active = false; Destroy(this); return; }
+        if (_hero == null) { End(); return; }
+        UpdateDrill();
         if (_t < Duration)
         {
             if (_t >= _nextTick)
             {
                 _nextTick += Tick;
                 Vector2 center = GaleFx.Center(_hero);
-                // 穿透：路径上所有敌人都会被击中
-                foreach (var hm in GaleCombat.EnemiesInCircle(center, 1.3f))
+                // 穿透：窄路径上的敌人被击中（宽度与突刺动画一致）
+                foreach (var hm in GaleCombat.EnemiesInCircle(center, 0.9f))
                 {
                     if (!_hit.Add(hm.GetInstanceID())) continue;
                     GaleCombat.ApplyHit(hm, _hero.gameObject, GaleCombat.NailDamage(_hero, 0.7f),
@@ -174,16 +207,22 @@ public sealed class PhantomLunge : MonoBehaviour
         }
         else
         {
-            // 末端爆发
+            // 末端爆发（小范围）
             Vector2 center = GaleFx.Center(_hero);
-            foreach (var hm in GaleCombat.EnemiesInCircle(center, 1.9f))
+            foreach (var hm in GaleCombat.EnemiesInCircle(center, 1.25f))
             {
                 GaleCombat.ApplyHit(hm, _hero.gameObject, GaleCombat.NailDamage(_hero, 0.8f),
                     GaleCombat.AngleTo(center, hm.transform.position), circle: true, magnitude: 1.3f);
             }
             GaleFx.PlayLungeBurst((Vector3)center);
-            _active = false;
-            Destroy(this);
+            End();
         }
+    }
+
+    private void End()
+    {
+        if (_drill != null) Destroy(_drill);
+        _active = false;
+        Destroy(this);
     }
 }

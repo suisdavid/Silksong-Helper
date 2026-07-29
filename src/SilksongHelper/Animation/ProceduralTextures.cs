@@ -16,6 +16,61 @@ public static class ProceduralTextures
     }
 
     /// <summary>
+    /// 冲刺招式「残影连突」的钻头动画帧：一枚螺旋织针朝 +x 方向，
+    /// 螺旋纹相位随帧移动产生旋转钻进的动势。
+    /// </summary>
+    public static Texture2D[] BuildDrill(int frameCount = 8, int w = 128, int h = 64)
+    {
+        var frames = new Texture2D[frameCount];
+        for (int f = 0; f < frameCount; f++)
+            frames[f] = DrawDrillFrame(w, h, f * (Mathf.PI * 2f / frameCount));
+        return frames;
+    }
+
+    private static Texture2D DrawDrillFrame(int w, int h, float phase)
+    {
+        var tex = new Texture2D(w, h, TextureFormat.RGBA32, false) { filterMode = FilterMode.Bilinear };
+        var px = new Color32[w * h];
+        var cyan = new Color(0.55f, 0.95f, 1f);
+
+        for (int y = 0; y < h; y++)
+        {
+            for (int x = 0; x < w; x++)
+            {
+                float u = ((x + 0.5f) / w) * 2f - 1f;   // -1..1 长轴
+                float v = ((y + 0.5f) / h) * 2f - 1f;   // -1..1 宽轴
+                Color c = new Color(0, 0, 0, 0);
+
+                float t = (u + 0.65f) / 1.6f;           // 0=柄端 1=针尖
+                if (t >= 0f && t <= 1f)
+                {
+                    float width = Mathf.Lerp(0.55f, 0.03f, Mathf.Pow(t, 0.8f)); // 逐渐收尖
+                    float d = Mathf.Abs(v) / Mathf.Max(width, 0.001f);
+                    if (d <= 1f)
+                    {
+                        // 螺旋纹：斜向亮带随帧移动 → 旋转感
+                        float stripe = 0.5f + 0.5f * Mathf.Sin((u * 5f + v * 7f) * Mathf.PI - phase);
+                        float edge = Mathf.Pow(1f - d, 0.45f);
+                        float a = edge * (0.45f + 0.55f * stripe);
+                        // 针体
+                        c = new Color(cyan.r, cyan.g, cyan.b, Mathf.Clamp01(a));
+                        // 亮芯
+                        float core = Mathf.Exp(-d * d * 5f) * (0.5f + 0.5f * stripe);
+                        c = Color.Lerp(c, new Color(1f, 1f, 1f, Mathf.Clamp01(a + 0.25f)), Mathf.Clamp01(core));
+                        // 针尖白热
+                        if (t > 0.88f)
+                            c = Color.Lerp(c, Color.white, (t - 0.88f) / 0.12f * 0.9f);
+                    }
+                }
+                px[y * w + x] = c;
+            }
+        }
+        tex.SetPixels32(px);
+        tex.Apply();
+        return tex;
+    }
+
+    /// <summary>
     /// 自创招式「旋风丝刃」的动画帧：两片相对的丝刃月牙环绕中心旋转。
     /// 每帧旋转 step 度，完全是程序化绘制的全新动画，不取自任何游戏资产。
     /// </summary>
