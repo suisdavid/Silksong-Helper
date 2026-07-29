@@ -38,6 +38,7 @@ public sealed class CycloneSlash : MonoBehaviour
         c._rd = go.AddComponent<SpriteRenderer>();
         c._rd.sortingOrder = 100;
         go.transform.position = Center(hero);
+        GaleFx.PlayCycloneExtras(hero); // 精细补充层：冲击环+火花+逆向光尘
         _alive++;
     }
 

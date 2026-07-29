@@ -187,6 +187,34 @@ designed crest '疾风纹章' applied (16 fields)
 
 - 用户提供的视频为丝之歌源码解析（架构/移动逻辑），本项目攻击链路结论均来自本地反编译（ilspycmd）验证。
 
+## 进展 9（2026-07-28）：精细特效体系——五套独立招式特效（v0.7.0）
+
+### 用户反馈
+
+「旋风丝刃可以使用，但特效不够精细」→ 要求更精细的特效，且下劈、上劈、冲刺攻击、回血各自不同。
+
+### 实现：`FxTextures` + `GaleFx` 特效系统
+
+**贴图层**（`Animation/FxTextures.cs`）：全部程序化绘制 + **2x 超采样抗锯齿**（2 倍尺寸绘制后平均降采样），白色带 Alpha、运行时染色：
+- 柔光点（径向渐变，粒子/光晕用）、柔圆环（高斯边缘，冲击波/脉冲用）、锥形刀光 streak（亮芯+外辉+两端收尖，旋转即变向）
+- 已用 Python 复刻算法生成预览图逐一视觉校验。
+
+**五套招式特效**（`Game/GaleFx.cs`，轻量粒子组件 FxParticle/WispRing/BindAura）：
+
+| 招式 | 特效 | 主题色 |
+| --- | --- | --- |
+| 普攻 旋风丝刃 | 原月牙旋风 + 新增：冲击环、10 颗外溅火花、6 点逆向旋转光尘环 | 疾风青蓝 |
+| 上劈 青霄刺 | 3 道上冲光刃（扇形展开）+ 上飘光尘 + 小环 | 青空色 |
+| 下劈 坠星刺 | 3 道下坠光刃 + 8 颗高速坠落光尘 | 深蓝色 |
+| 冲刺 疾影突 | 4 条身后拖影光痕（错位渐隐）+ 小冲击环 | 疾风青蓝 |
+| 缚丝 丝愈之环 | 缚丝期间持续：呼吸光晕 + 每 0.45s 上升脉冲环 + 螺旋上升光尘 | 丝愈青绿 |
+
+**挂接**（`Game/GaleFxPatches.cs`，均仅疾风纹章装备时生效）：
+- 上劈/下劈：`NailSlash.StartSlash` postfix 按 hc 字段比对 slash 身份
+- 下刺：`Downspike.StartSlash` postfix（漫游者 downSlashType=DownSpike 走此路径）
+- 冲刺：`NailSlashTravel.OnEnable` postfix + `cState.dashing` 守卫（防止换纹章时误触发）+ 0.3s 防抖
+- 缚丝：`HeroController.Update` postfix 检测 `cState.isBinding` 上升沿，BindAura 持续到缚丝结束
+
 ## 已实现的架构
 
 - `Plugin.cs`：BepInEx 入口，初始化目录/存档/Harmony 补丁。
