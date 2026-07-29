@@ -111,6 +111,58 @@ public static class GaleFx
     /* ================= 缚丝：丝愈之环 ================= */
     public static void PlayBind(HeroController hero) => BindAura.Begin(hero, Dot, Ring, Jade);
 
+    /* ================= 自创招式补充特效 ================= */
+    /// <summary>青霄柱：柱内光尘上涌</summary>
+    public static void PlayPillarMote(Vector3 center)
+    {
+        Spawn(Dot, center + new Vector3(Rand(-0.6f, 0.6f), Rand(-1.4f, 0f), 0), Sky,
+            Rand(0.15f, 0.25f), 0.04f, new Vector3(0, Rand(2.5f, 4f), 0), 1f, 0f, 0f, 0.35f);
+    }
+
+    /// <summary>坠星震荡：冲击波波前</summary>
+    public static void PlayWaveFront(Vector3 pos)
+    {
+        Spawn(Streak, pos + Vector3.up * 0.15f, Azure, 0.7f, 1.1f, Vector3.up * 1.2f, 2f, 0f, 90f, 0.22f);
+        Spawn(Dot, pos, Azure, 0.25f, 0.05f, Vector3.up * 2f, 1.5f, 0f, 0f, 0.3f);
+    }
+
+    /// <summary>坠星震荡：落地冲击</summary>
+    public static void PlayDiveImpact(Vector3 pos)
+    {
+        Spawn(Ring, pos, Azure, 0.6f, 3.4f, Vector3.zero, 0f, 0f, 0f, 0.4f);
+        foreach (float side in new[] { -1f, 1f })
+        {
+            Spawn(Streak, pos + new Vector3(side * 0.9f, 0.15f, 0), Color.white,
+                1.3f, 0.5f, new Vector3(side * 6f, 0, 0), 4f, 0f, side > 0 ? 0f : 180f, 0.3f);
+        }
+        for (int i = 0; i < 10; i++)
+        {
+            float ang = Rand(20f, 160f) * Mathf.Deg2Rad;
+            var dir = new Vector3(Mathf.Cos(ang), Mathf.Sin(ang), 0);
+            Spawn(Dot, pos, i % 2 == 0 ? Color.white : Azure, Rand(0.2f, 0.32f), 0.05f,
+                dir * Rand(3f, 6f), 2.5f, 0f, 0f, Rand(0.3f, 0.5f));
+        }
+    }
+
+    /// <summary>残影连突：路径残影</summary>
+    public static void PlayAfterimage(Vector3 pos)
+    {
+        Spawn(Dot, pos, new Color(0.55f, 0.95f, 1f, 0.7f), 0.7f, 0.2f, Vector3.zero, 0f, 0f, 0f, 0.3f);
+    }
+
+    /// <summary>残影连突：末端爆发</summary>
+    public static void PlayLungeBurst(Vector3 pos)
+    {
+        Spawn(Ring, pos, Cyan, 0.5f, 3.2f, Vector3.zero, 0f, 0f, 0f, 0.35f);
+        for (int i = 0; i < 8; i++)
+        {
+            float ang = i * 45f + Rand(-8f, 8f);
+            var dir = new Vector3(Mathf.Cos(ang * Mathf.Deg2Rad), Mathf.Sin(ang * Mathf.Deg2Rad), 0);
+            Spawn(Streak, pos + dir * 0.7f, i % 2 == 0 ? Color.white : Cyan,
+                0.8f, 0.3f, dir * Rand(5f, 7f), 3.5f, 0f, ang, 0.28f);
+        }
+    }
+
     /* ================= 粒子组件 ================= */
     public sealed class FxParticle : MonoBehaviour
     {

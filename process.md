@@ -215,6 +215,25 @@ designed crest '疾风纹章' applied (16 fields)
 - 冲刺：`NailSlashTravel.OnEnable` postfix + `cState.dashing` 守卫（防止换纹章时误触发）+ 0.3s 防抖
 - 缚丝：`HeroController.Update` postfix 检测 `cState.isBinding` 上升沿，BindAura 持续到缚丝结束
 
+## 进展 10（2026-07-28）：四大攻击招式全部自创（v0.8.0）
+
+### 需求澄清
+
+用户：特效不是加贴图——要的是**攻击动作行为本身**全新，普攻/上劈/下劈/冲刺都不能同于任何已有纹章。
+
+### 四个自创招式（行为层面全新，`Game/GaleMoves.cs` + `Game/GaleCombat.cs`）
+
+| 招式 | 行为设计（与任何纹章都不同） | 拦截点 |
+| --- | --- | --- |
+| 普攻「旋风丝刃」 | 360° 环绕多段攻击（v0.6.0 已有） | NailSlash normal/alt |
+| 上劈「青霄柱」 | 大黄蜂小幅浮空，头顶生成丝刃柱（1.5×3.6 判定盒）0.45s 内 4 段攻击，可在空中连段 | NailSlash up/altUp |
+| 下劈「坠星震荡」 | 高速下坠（-24 速度），落地或命中敌人瞬间爆发：直接伤害 + 向两侧各推进 6 段的**地面冲击波**；命中敌人则弹起 | NailSlash down/altDown + Downspike 双路径 |
+| 冲刺「残影连突」 | **穿透**整条冲刺路径的所有敌人（每 0.06s 判定），末端小爆发径向击退——原版任何纹章的冲刺斩都只打身前 | NailSlashTravel.OnEnable（cState.dashing 守卫+防抖） |
+
+- 伤害基础设施抽取为 `GaleCombat`：反射构造 HitInstance、OverlapCircle/Box 敌人检测、英雄状态读取，四个招式复用。
+- 每招配独立特效（v0.7.0 的精细贴图粒子）：青霄柱光尘上涌、坠星落地冲击环+波前、连突路径残影+末端爆发环。
+- 原版斩击全部被 prefix 拦截（return false），伤害/动画完全由自创逻辑接管；hero 攻击状态机由计时器驱动不受影响（已验证的拦截模式）。
+
 ## 已实现的架构
 
 - `Plugin.cs`：BepInEx 入口，初始化目录/存档/Harmony 补丁。

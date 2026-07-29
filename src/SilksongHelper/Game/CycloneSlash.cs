@@ -147,7 +147,7 @@ public sealed class CycloneSlash : MonoBehaviour
     }
 }
 
-/// <summary>装备疾风纹章时，用自创招式「旋风丝刃」替换水平斩击。</summary>
+/// <summary>装备疾风纹章时，用自创招式替换各方向斩击。</summary>
 internal static class CyclonePatches
 {
     [HarmonyPatch(typeof(NailSlash), nameof(NailSlash.StartSlash))]
@@ -160,16 +160,70 @@ internal static class CyclonePatches
                 if (DesignedCrests.AppliedId != "Gale") return true;
                 var hc = AccessTools.Field(typeof(NailSlash), "hc")?.GetValue(__instance) as HeroController;
                 if (hc == null) return true;
-                var normal = AccessTools.Field(typeof(HeroController), "normalSlash")?.GetValue(hc);
-                var alt = AccessTools.Field(typeof(HeroController), "alternateSlash")?.GetValue(hc);
-                if (ReferenceEquals(__instance, normal) || ReferenceEquals(__instance, alt))
+                object? F(string n) => AccessTools.Field(typeof(HeroController), n)?.GetValue(hc);
+                // 水平斩 → 旋风丝刃
+                if (ReferenceEquals(__instance, F("normalSlash")) || ReferenceEquals(__instance, F("alternateSlash")))
                 {
                     CycloneSlash.Spawn(hc);
-                    Plugin.Log.LogInfo("[DIAG] cyclone spawned (replaces normal slash)");
-                    return false; // 拦截原版斩击，完全使用自创招式
+                    return false;
+                }
+                // 上劈 → 青霄柱
+                if (ReferenceEquals(__instance, F("upSlash")) || ReferenceEquals(__instance, F("altUpSlash")))
+                {
+                    SkyPillar.Start(hc);
+                    return false;
+                }
+                // 下劈 → 坠星震荡
+                if (ReferenceEquals(__instance, F("downSlash")) || ReferenceEquals(__instance, F("altDownSlash")))
+                {
+                    MeteorDive.Start(hc);
+                    return false;
                 }
             }
-            catch (Exception e) { Plugin.Log.LogWarning($"cyclone prefix: {e.Message}"); }
+            catch (Exception e) { Plugin.Log.LogWarning($"gale move prefix: {e.Message}"); }
+            return true;
+        }
+    }
+
+    /// <summary>下刺路径（downSlashType=DownSpike）→ 坠星震荡。</summary>
+    [HarmonyPatch(typeof(Downspike), nameof(Downspike.StartSlash))]
+    internal static class DownspikePrefix
+    {
+        internal static bool Prefix(Downspike __instance)
+        {
+            try
+            {
+                if (DesignedCrests.AppliedId != "Gale") return true;
+                var hc = AccessTools.Field(typeof(Downspike), "hc")?.GetValue(__instance) as HeroController;
+                if (hc == null) return true;
+                MeteorDive.Start(hc);
+                return false;
+            }
+            catch (Exception e) { Plugin.Log.LogWarning($"gale dive prefix: {e.Message}"); }
+            return true;
+        }
+    }
+
+    /// <summary>冲刺攻击路径（DashStab 激活）→ 残影连突。仅实际冲刺中触发。</summary>
+    [HarmonyPatch(typeof(NailSlashTravel), "OnEnable")]
+    internal static class DashStabPrefix
+    {
+        private static float _last;
+
+        internal static bool Prefix(NailSlashTravel __instance)
+        {
+            try
+            {
+                if (DesignedCrests.AppliedId != "Gale") return true;
+                var hc = AccessTools.Field(typeof(NailSlashTravel), "hc")?.GetValue(__instance) as HeroController;
+                if (hc == null) return true;
+                if (!GaleCombat.CStateBool(hc, "dashing")) return true;
+                if (Time.time - _last < 0.3f) return true; // 防抖
+                _last = Time.time;
+                PhantomLunge.Start(hc);
+                return false; // 拦截原版冲刺斩判定，伤害由残影连突负责
+            }
+            catch (Exception e) { Plugin.Log.LogWarning($"gale lunge prefix: {e.Message}"); }
             return true;
         }
     }
