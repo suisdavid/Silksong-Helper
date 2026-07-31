@@ -15,6 +15,65 @@ public static class ProceduralTextures
         return frames;
     }
 
+    /// <summary>亵渎者纹章图标：赤红圣剑（剑刃+护手+剑柄）。</summary>
+    public static Texture2D BuildSwordIcon(int size = 128)
+    {
+        var tex = new Texture2D(size, size, TextureFormat.RGBA32, false) { filterMode = FilterMode.Bilinear };
+        var px = new Color32[size * size];
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                float u = ((x + 0.5f) / size) * 2f - 1f;
+                float v = ((y + 0.5f) / size) * 2f - 1f;
+                Color c = new Color(0, 0, 0, 0);
+
+                // 剑刃（上段，渐收至剑尖）
+                if (v > 0.02f && v <= 0.92f)
+                {
+                    float t = (v - 0.02f) / 0.9f;
+                    float hw = Mathf.Lerp(0.13f, 0.015f, Mathf.Pow(t, 1.3f));
+                    float d = Mathf.Abs(u) / Mathf.Max(hw, 0.001f);
+                    if (d <= 1f)
+                    {
+                        float a = Mathf.Pow(1f - d, 0.4f);
+                        c = Color.Lerp(new Color(0.75f, 0.12f, 0.12f), new Color(1f, 0.45f, 0.35f), 1f - t * 0.5f);
+                        c.a = Mathf.Clamp01(a + 0.25f);
+                        // 中央血槽亮线
+                        if (Mathf.Abs(u) < hw * 0.22f)
+                            c = Color.Lerp(c, Color.white, 0.55f * (1f - t * 0.4f));
+                    }
+                }
+                // 护手
+                if (Mathf.Abs(v) < 0.05f && Mathf.Abs(u) < 0.42f)
+                    c = new Color(0.45f, 0.08f, 0.10f, 1f);
+                // 剑柄
+                if (v <= -0.05f && v > -0.42f && Mathf.Abs(u) < 0.07f)
+                    c = new Color(0.30f, 0.05f, 0.07f, 1f);
+                // 柄首圆珠
+                if (new Vector2(u, v + 0.5f).magnitude < 0.10f)
+                    c = new Color(0.9f, 0.2f, 0.15f, 1f);
+
+                px[y * size + x] = c;
+            }
+        }
+        tex.SetPixels32(px);
+        tex.Apply();
+        return tex;
+    }
+
+    /// <summary>由彩色贴图生成黑色剪影（保留 alpha）。用于纹章剪影图标。</summary>
+    public static Texture2D Silhouette(Texture2D src)
+    {
+        var tex = new Texture2D(src.width, src.height, TextureFormat.RGBA32, false) { filterMode = src.filterMode };
+        var px = src.GetPixels32();
+        for (int i = 0; i < px.Length; i++)
+            px[i] = new Color32(10, 10, 14, px[i].a);
+        tex.SetPixels32(px);
+        tex.Apply();
+        return tex;
+    }
+
     /// <summary>亵渎者烈焰贴图：泪滴形火焰，边缘正弦摆动产生跳动闪烁感，红黄核心渐变。</summary>
     public static Texture2D[] BuildFlame(int frameCount = 6, int w = 64, int h = 96)
     {

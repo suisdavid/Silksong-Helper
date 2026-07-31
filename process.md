@@ -280,6 +280,20 @@ designed crest '疾风纹章' applied (16 fields)
 - 碰撞矩阵风险：游戏自定义了 Physics2D 碰撞层，OnTriggerEnter 未必触发 → 改用真实碰撞箱 + OverlapCollider 主动查询，兼顾"真碰撞箱"与可靠性。
 - 冲刺与冲刺攻击共用 dashing 状态 → 闪现放在冲刺开始沿，血光走 NailSlashTravel 拦截（带 dashing 守卫），各司其职。
 
+## 进展 13（2026-07-31）：专属纹章图标——解决"找不到亵渎者"（v0.9.1）
+
+### 问题定位
+
+用户反馈"并没有新的动作"。查 BepInEx 日志：`designed crest '亵渎者' built` ✓ 但全程 `crest=Gale`——**用户一直在用疾风纹章，亵渎者从未被装备**。原因：两个自设纹章都克隆漫游者外观，长椅界面里难以分辨。
+
+### 修复
+
+为自设计纹章生成**程序化专属图标**（`ProceduralTextures.BuildSwordIcon` / 旋风帧 + `Silhouette` 剪影），写入克隆纹章的 `crestSprite`/`crestSilhouette`/`crestGlow` 字段：
+- 亵渎者 → **红色圣剑图标**（剑刃+血槽亮线+护手+柄首圆珠，Python 预览校验）
+- 疾风纹章 → 双月牙旋风图标
+
+长椅换纹章界面现在一眼可辨。
+
 ## 已实现的架构
 
 - `Plugin.cs`：BepInEx 入口，初始化目录/存档/Harmony 补丁。

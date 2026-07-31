@@ -143,6 +143,7 @@ public static class DesignedCrests
 
                 var crest = UnityEngine.Object.Instantiate(baseCrest);
                 crest.name = def.Id;
+                ApplyIcon(crest, def);
                 // 注意：heroConfig 保持指向蓝本的共享配置资产，确保
                 // UpdateConfig 能引用匹配到蓝本的配置组（攻击动作/动画）。
 
@@ -156,6 +157,24 @@ public static class DesignedCrests
             }
             catch (Exception e) { Plugin.Log.LogWarning($"build designed crest '{def.Name}': {e}"); }
         }
+    }
+
+    /// <summary>为自设计纹章生成专属图标（区别于蓝本纹章，方便在长椅界面辨认）。</summary>
+    private static void ApplyIcon(ToolCrest crest, Def def)
+    {
+        try
+        {
+            Texture2D icon = def.Id == "Blasphemer"
+                ? ProceduralTextures.BuildSwordIcon(128)
+                : ProceduralTextures.BuildCyclone(1, 128)[0];
+            var spr = Sprite.Create(icon, new Rect(0, 0, icon.width, icon.height), new Vector2(0.5f, 0.5f), 64f);
+            var silTex = ProceduralTextures.Silhouette(icon);
+            var sil = Sprite.Create(silTex, new Rect(0, 0, silTex.width, silTex.height), new Vector2(0.5f, 0.5f), 64f);
+            foreach (var fn in new[] { "crestSprite", "crestGlow" })
+                AccessTools.Field(typeof(ToolCrest), fn)?.SetValue(crest, spr);
+            AccessTools.Field(typeof(ToolCrest), "crestSilhouette")?.SetValue(crest, sil);
+        }
+        catch (Exception e) { Plugin.Log.LogWarning($"crest icon '{def.Id}': {e.Message}"); }
     }
 
     /// <summary>装备自设计纹章时调用：把自定义数值写入当前激活配置（记录原值）。</summary>
