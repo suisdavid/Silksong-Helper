@@ -133,10 +133,10 @@ public sealed class MeteorDive : MonoBehaviour
     }
 }
 
-/// <summary>冲刺攻击：残影连突（带螺旋钻头突刺动画）</summary>
+/// <summary>冲刺攻击：残影连突（带螺旋钻头突刺动画，自驱动位移）</summary>
 public sealed class PhantomLunge : MonoBehaviour
 {
-    private const float Duration = 0.32f, Tick = 0.06f, DrillFps = 24f;
+    private const float Duration = 0.32f, Tick = 0.06f, DrillFps = 24f, LungeSpeed = 24f;
     private static bool _active;
     private static Sprite[]? _drillFrames;
 
@@ -188,6 +188,9 @@ public sealed class PhantomLunge : MonoBehaviour
     {
         _t += Time.deltaTime;
         if (_hero == null) { End(); return; }
+        // 自驱动突进位移（NailSlashTravel 已被拦截）
+        if (_t < Duration && _hero.Body != null)
+            _hero.Body.linearVelocity = new Vector2(Mathf.Sign(_hero.transform.localScale.x) * LungeSpeed, 0f);
         UpdateDrill();
         if (_t < Duration)
         {
@@ -222,6 +225,8 @@ public sealed class PhantomLunge : MonoBehaviour
     private void End()
     {
         if (_drill != null) Destroy(_drill);
+        if (_hero != null && _hero.Body != null)
+            _hero.Body.linearVelocity = new Vector2(_hero.Body.linearVelocity.x * 0.35f, _hero.Body.linearVelocity.y);
         _active = false;
         Destroy(this);
     }

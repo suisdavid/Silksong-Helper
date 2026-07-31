@@ -75,10 +75,11 @@ public sealed class SwordSwing : MonoBehaviour
         UpdateTransform(0f);
     }
 
-    /// <summary>按刀光形状生成多边形碰撞箱（外弧 + 内弧闭合）。</summary>
+    /// <summary>按刀光形状生成多边形碰撞箱（外弧 + 近心小弧闭合，覆盖贴身区域，避免正下方敌人落入空心）。</summary>
     private void BuildBladeCollider()
     {
         const int N = 10;
+        float rInner = R0 * 0.25f; // 内缘收到近心处：近身敌人也在判定内
         var pts = new List<Vector2>();
         for (int i = 0; i <= N; i++)
         {
@@ -88,7 +89,7 @@ public sealed class SwordSwing : MonoBehaviour
         for (int i = N; i >= 0; i--)
         {
             float a = Mathf.Lerp(-HalfSweep, HalfSweep, (float)i / N) * Mathf.Deg2Rad;
-            pts.Add(new Vector2(Mathf.Cos(a) * R0, Mathf.Sin(a) * R0));
+            pts.Add(new Vector2(Mathf.Cos(a) * rInner, Mathf.Sin(a) * rInner));
         }
         _poly.points = pts.ToArray();
     }
@@ -98,7 +99,9 @@ public sealed class SwordSwing : MonoBehaviour
         float ang = Mathf.Lerp(_a0, _a1, ease);
         if (_facing < 0) ang = 180f - ang;
         transform.rotation = Quaternion.Euler(0, 0, ang);
-        transform.position = _hero.transform.position + new Vector3(_facing * 0.4f, 0.9f, 0);
+        // 下劈时弧心下移，让判定正真罩住脚下；上劈略微上移
+        float yOff = _dir == Dir.Down ? 0.55f : _dir == Dir.Up ? 1.1f : 0.9f;
+        transform.position = _hero.transform.position + new Vector3(_facing * 0.4f, yOff, 0);
     }
 
     private void Update()
@@ -169,7 +172,8 @@ public static class PhantomBlink
                 0.7f, 0.1f, Vector3.zero, 0f, 0f, 0f, 0.25f);
 
         hc.transform.position += new Vector3(facing * d, 0, 0);
-        if (hc.Body != null) hc.Body.linearVelocity = new Vector2(0f, hc.Body.linearVelocity.y);
+        // 保留冲刺动能：闪现后向前滑行而不是骤停
+        if (hc.Body != null) hc.Body.linearVelocity = new Vector2(facing * 16f, hc.Body.linearVelocity.y);
 
         // 落点实影
         Vector3 to = hc.transform.position + new Vector3(0, 0.9f, 0);
@@ -177,10 +181,10 @@ public static class PhantomBlink
     }
 }
 
-/// <summary>冲刺攻击：化身血光穿刺前方敌人，经过区域留下燃烧的烈焰。</summary>
+/// <summary>冲刺攻击：化身血光穿刺前方敌人（自驱动位移），经过区域留下燃烧的烈焰。</summary>
 public sealed class BloodRush : MonoBehaviour
 {
-    private const float Duration = 0.35f, Tick = 0.05f, FlameEvery = 0.8f;
+    private const float Duration = 0.35f, Tick = 0.05f, FlameEvery = 0.8f, RushSpeed = 22f;
     private static bool _active;
 
     private HeroController _hero = null!;
@@ -209,6 +213,11 @@ public sealed class BloodRush : MonoBehaviour
     {
         _t += Time.deltaTime;
         if (_hero == null || _t >= Duration) { End(); return; }
+
+        // 自驱动突进位移（NailSlashTravel 已被拦截，位移由血光负责）
+        float facing = Mathf.Sign(_hero.transform.localScale.x);
+        if (_hero.Body != null)
+            _hero.Body.linearVelocity = new Vector2(facing * RushSpeed, 0f);
 
         Vector2 center = GaleFx.Center(_hero);
         if (_glow != null)
@@ -245,6 +254,9 @@ public sealed class BloodRush : MonoBehaviour
     private void End()
     {
         if (_glow != null) Destroy(_glow);
+        // 突进结束：缓出而不是骤停
+        if (_hero != null && _hero.Body != null)
+            _hero.Body.linearVelocity = new Vector2(_hero.Body.linearVelocity.x * 0.35f, _hero.Body.linearVelocity.y);
         _active = false;
         Destroy(this);
     }

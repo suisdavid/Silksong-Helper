@@ -198,7 +198,9 @@ internal static class CyclonePatches
             {
                 var id = DesignedCrests.AppliedId;
                 if (id == null) return true;
-                var hc = AccessTools.Field(typeof(Downspike), "hc")?.GetValue(__instance) as HeroController;
+                // Downspike 的英雄字段名为 heroCtrl（NailSlash 为 hc）
+                var hc = (AccessTools.Field(typeof(Downspike), "heroCtrl")?.GetValue(__instance)
+                          ?? AccessTools.Field(typeof(Downspike), "hc")?.GetValue(__instance)) as HeroController;
                 if (hc == null) return true;
                 if (id == "Gale") { MeteorDive.Start(hc); return false; }
                 if (id == "Blasphemer") { SwordSwing.Start(hc, SwordSwing.Dir.Down); return false; }
