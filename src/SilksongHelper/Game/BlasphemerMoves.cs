@@ -124,6 +124,23 @@ public sealed class SwordSwing : MonoBehaviour
         int n = _poly.OverlapCollider(_filter, _results);
         for (int i = 0; i < n; i++)
         {
+            // 下劈命中敌人或障碍物（尖刺/机关等 DamageHero）都会弹起
+            if (_dir == Dir.Down && !_bounced && !GaleCombat.CStateBool(_hero, "onGround"))
+            {
+                bool bounceable = false;
+                try
+                {
+                    bounceable = _results[i].GetComponentInParent<DamageHero>() != null
+                                 || _results[i].GetComponentInParent<HealthManager>() != null;
+                }
+                catch { }
+                if (bounceable && _hero.Body != null)
+                {
+                    _bounced = true;
+                    _hero.Body.linearVelocity = new Vector2(_hero.Body.linearVelocity.x, 12f);
+                }
+            }
+
             HealthManager? hm = null;
             try { hm = _results[i].GetComponentInParent<HealthManager>(); } catch { }
             if (hm == null || !_hit.Add(hm.GetInstanceID())) continue;
@@ -137,13 +154,6 @@ public sealed class SwordSwing : MonoBehaviour
             GaleCombat.ApplyHit(hm, _hero.gameObject, GaleCombat.NailDamage(_hero, 1f), kb);
             GaleFx.Spawn(GaleFx.Dot, hm.transform.position, BlasphemerTheme.Blood, 0.3f, 0.05f,
                 Vector3.zero, 0f, 0f, 0f, 0.2f);
-
-            // 下劈命中弹起（空中）
-            if (_dir == Dir.Down && !_bounced && !GaleCombat.CStateBool(_hero, "onGround") && _hero.Body != null)
-            {
-                _bounced = true;
-                _hero.Body.linearVelocity = new Vector2(_hero.Body.linearVelocity.x, 12f);
-            }
         }
     }
 }
@@ -214,11 +224,8 @@ public sealed class BloodRush : MonoBehaviour
         _t += Time.deltaTime;
         if (_hero == null || _t >= Duration) { End(); return; }
 
-        // 自驱动突进位移（NailSlashTravel 已被拦截，位移由血光负责）
+        // 位移交给原版突进（NailSlashTravel），血光只负责附体特效/额外穿刺/烈焰
         float facing = Mathf.Sign(_hero.transform.localScale.x);
-        if (_hero.Body != null)
-            _hero.Body.linearVelocity = new Vector2(facing * RushSpeed, 0f);
-
         Vector2 center = GaleFx.Center(_hero);
         if (_glow != null)
         {
@@ -254,9 +261,6 @@ public sealed class BloodRush : MonoBehaviour
     private void End()
     {
         if (_glow != null) Destroy(_glow);
-        // 突进结束：缓出而不是骤停
-        if (_hero != null && _hero.Body != null)
-            _hero.Body.linearVelocity = new Vector2(_hero.Body.linearVelocity.x * 0.35f, _hero.Body.linearVelocity.y);
         _active = false;
         Destroy(this);
     }

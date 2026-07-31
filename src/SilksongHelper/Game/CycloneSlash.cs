@@ -210,28 +210,27 @@ internal static class CyclonePatches
         }
     }
 
-    /// <summary>冲刺攻击路径（DashStab 激活）。仅实际冲刺中触发。</summary>
+    /// <summary>冲刺攻击路径（DashStab 激活）：与原版突进共存（位移/动画交给原版），叠加自创血光/钻头与额外判定。</summary>
     [HarmonyPatch(typeof(NailSlashTravel), "OnEnable")]
     internal static class DashStabPrefix
     {
         private static float _last;
 
-        internal static bool Prefix(NailSlashTravel __instance)
+        internal static void Postfix(NailSlashTravel __instance)
         {
             try
             {
                 var id = DesignedCrests.AppliedId;
-                if (id == null) return true;
+                if (id == null) return;
                 var hc = AccessTools.Field(typeof(NailSlashTravel), "hc")?.GetValue(__instance) as HeroController;
-                if (hc == null) return true;
-                if (!GaleCombat.CStateBool(hc, "dashing")) return true;
-                if (Time.time - _last < 0.3f) return true; // 防抖
+                if (hc == null) return;
+                if (!GaleCombat.CStateBool(hc, "dashing")) return;
+                if (Time.time - _last < 0.3f) return; // 防抖
                 _last = Time.time;
-                if (id == "Gale") { PhantomLunge.Start(hc); return false; }
-                if (id == "Blasphemer") { BloodRush.Start(hc); return false; }
+                if (id == "Gale") PhantomLunge.Start(hc);
+                else if (id == "Blasphemer") BloodRush.Start(hc);
             }
-            catch (Exception e) { Plugin.Log.LogWarning($"rush prefix: {e.Message}"); }
-            return true;
+            catch (Exception e) { Plugin.Log.LogWarning($"rush postfix: {e.Message}"); }
         }
     }
 }
