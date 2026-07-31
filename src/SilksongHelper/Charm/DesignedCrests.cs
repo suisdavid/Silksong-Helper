@@ -60,6 +60,26 @@ public static class DesignedCrests
             SlashScale = 1.2f,
             SlashTint = new Color(0.55f, 0.95f, 1f), // 疾风青蓝
         },
+        new Def
+        {
+            Id = "Blasphemer",
+            Name = "亵渎者",
+            Description = "自设纹章：赤红亵渎圣剑。普攻/上劈/下劈皆为圣剑挥砍（真实碰撞箱）；冲刺化虚影闪现；冲刺攻击化血光穿刺并留下烈焰。",
+            BaseCrestId = "Wanderer",
+            Mults = new (string, float)[]
+            {
+                ("attackRecoveryTime", 0.9f),
+                ("dashStabSpeed", 1.2f),
+            },
+            Overrides = new (string, object)[]
+            {
+                ("canTurnWhileSlashing", true),
+                ("canNailCharge", true),
+                ("canBind", true),
+            },
+            SlashScale = 1.0f,
+            SlashTint = new Color(1f, 0.35f, 0.30f), // 亵渎血红
+        },
     };
 
     private static readonly Dictionary<string, ToolCrest> _crests = new();

@@ -15,6 +15,49 @@ public static class ProceduralTextures
         return frames;
     }
 
+    /// <summary>亵渎者烈焰贴图：泪滴形火焰，边缘正弦摆动产生跳动闪烁感，红黄核心渐变。</summary>
+    public static Texture2D[] BuildFlame(int frameCount = 6, int w = 64, int h = 96)
+    {
+        var frames = new Texture2D[frameCount];
+        for (int f = 0; f < frameCount; f++)
+            frames[f] = DrawFlameFrame(w, h, f * 1.31f);
+        return frames;
+    }
+
+    private static Texture2D DrawFlameFrame(int w, int h, float phase)
+    {
+        var tex = new Texture2D(w, h, TextureFormat.RGBA32, false) { filterMode = FilterMode.Bilinear };
+        var px = new Color32[w * h];
+        for (int y = 0; y < h; y++)
+        {
+            for (int x = 0; x < w; x++)
+            {
+                float u = ((x + 0.5f) / w) * 2f - 1f;    // -1..1
+                float v = (y + 0.5f) / h;                // 0(底)..1(顶)
+                // 泪滴轮廓：底宽顶尖 + 左右摆动
+                float sway = 0.18f * Mathf.Sin(v * 5f + phase) * v;
+                float width = Mathf.Pow(Mathf.Max(0f, 1f - v), 0.55f) * 0.55f
+                              * (1f + 0.16f * Mathf.Sin(v * 9f + phase * 1.7f));
+                float d = Mathf.Abs(u - sway) / Mathf.Max(width, 0.001f);
+                Color c = new Color(0, 0, 0, 0);
+                if (d <= 1f)
+                {
+                    float a = Mathf.Pow(1f - d, 0.6f);
+                    // 核心黄白 → 外缘血红
+                    float core = Mathf.Exp(-d * d * 4f) * Mathf.Max(0f, 1f - v * 0.7f);
+                    var outer = new Color(0.9f, 0.15f, 0.1f);
+                    var inner = new Color(1f, 0.75f, 0.3f);
+                    c = Color.Lerp(outer, inner, Mathf.Clamp01(core));
+                    c.a = Mathf.Clamp01(a);
+                }
+                px[y * w + x] = c;
+            }
+        }
+        tex.SetPixels32(px);
+        tex.Apply();
+        return tex;
+    }
+
     /// <summary>
     /// 冲刺招式「残影连突」的钻头动画帧：一枚螺旋织针朝 +x 方向，
     /// 螺旋纹相位随帧移动产生旋转钻进的动势。

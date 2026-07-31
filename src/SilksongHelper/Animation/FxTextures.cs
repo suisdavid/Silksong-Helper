@@ -8,6 +8,28 @@ namespace SilksongHelper;
 /// </summary>
 public static class FxTextures
 {
+    /// <summary>刀光月牙：±sweepDeg 的弧形刀光带，两端收尖、外缘亮线。用于真实挥砍碰撞箱的视觉。</summary>
+    public static Texture2D Crescent(int size = 160, float sweepDeg = 150f, float r0 = 0.35f, float r1 = 0.62f)
+    {
+        return Render(size, (u, v) =>
+        {
+            float r = Mathf.Sqrt(u * u + v * v);
+            if (r < r0 || r > r1) return 0f;
+            float ang = Mathf.Atan2(v, u) * Mathf.Rad2Deg; // 指向 +x 的弧
+            float half = sweepDeg * 0.5f;
+            if (Mathf.Abs(ang) > half) return 0f;
+            // 两端收尖
+            float taper = 1f - Mathf.Abs(ang) / half;
+            taper = Mathf.Pow(taper, 0.6f);
+            // 径向：外缘亮、内缘柔
+            float radial = (r - r0) / (r1 - r0);
+            float glow = 0.25f + 0.75f * Mathf.Pow(radial, 1.4f);
+            // 外缘刀锋亮线
+            float edge = Mathf.Exp(-Mathf.Pow((r - r1) / 0.045f, 2f));
+            return Mathf.Clamp01((glow * 0.8f + edge) * taper);
+        });
+    }
+
     /// <summary>柔和光点：径向渐变圆，用于粒子/光尘/光晕。</summary>
     public static Texture2D SoftDot(int size = 64)
     {

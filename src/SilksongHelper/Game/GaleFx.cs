@@ -16,10 +16,12 @@ public static class GaleFx
     public static readonly Color Azure = new(0.40f, 0.80f, 1f);      // 深蓝（下劈）
     public static readonly Color Jade = new(0.60f, 1.00f, 0.85f);    // 丝愈青绿（缚丝）
 
-    private static Sprite? _dot, _ring, _streak;
-    private static Sprite Dot => _dot ??= MakeSprite(FxTextures.SoftDot(64));
-    private static Sprite Ring => _ring ??= MakeSprite(FxTextures.Ring(128));
-    private static Sprite Streak => _streak ??= MakeSprite(FxTextures.Streak(128, 32));
+    private static Sprite? _dot, _ring, _streak, _crescent;
+    public static Sprite Dot => _dot ??= MakeSprite(FxTextures.SoftDot(64));
+    public static Sprite Ring => _ring ??= MakeSprite(FxTextures.Ring(128));
+    public static Sprite Streak => _streak ??= MakeSprite(FxTextures.Streak(128, 32));
+    /// <summary>刀光月牙（局部坐标：弧心在原点、指向 +x，弧带半径见 FxTextures.Crescent 参数）。</summary>
+    public static Sprite Crescent => _crescent ??= MakeSprite(FxTextures.Crescent(160));
 
     private static Sprite MakeSprite(Texture2D t)
         => Sprite.Create(t, new Rect(0, 0, t.width, t.height), new Vector2(0.5f, 0.5f), 64f);
@@ -29,7 +31,7 @@ public static class GaleFx
     private static readonly System.Random _rng = new();
     private static float Rand(float a, float b) => Mathf.Lerp(a, b, (float)_rng.NextDouble());
 
-    private static FxParticle Spawn(Sprite spr, Vector3 pos, Color color,
+    public static FxParticle Spawn(Sprite spr, Vector3 pos, Color color,
         float scale0, float scale1, Vector3 vel, float drag, float angVel, float rotZ, float life)
     {
         var go = new GameObject("GaleFx");
@@ -109,7 +111,8 @@ public static class GaleFx
     }
 
     /* ================= 缚丝：丝愈之环 ================= */
-    public static void PlayBind(HeroController hero) => BindAura.Begin(hero, Dot, Ring, Jade);
+    public static void PlayBind(HeroController hero, Color? color = null)
+        => BindAura.Begin(hero, Dot, Ring, color ?? Jade);
 
     /* ================= 自创招式补充特效 ================= */
     /// <summary>青霄柱：柱内光尘上涌</summary>

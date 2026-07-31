@@ -148,7 +148,7 @@ public sealed class CycloneSlash : MonoBehaviour
     }
 }
 
-/// <summary>装备疾风纹章时，用自创招式替换各方向斩击。</summary>
+/// <summary>装备自设计纹章时，用各自的自创招式替换各方向斩击。</summary>
 internal static class CyclonePatches
 {
     [HarmonyPatch(typeof(NailSlash), nameof(NailSlash.StartSlash))]
@@ -158,35 +158,37 @@ internal static class CyclonePatches
         {
             try
             {
-                if (DesignedCrests.AppliedId != "Gale") return true;
+                var id = DesignedCrests.AppliedId;
+                if (id == null) return true;
                 var hc = AccessTools.Field(typeof(NailSlash), "hc")?.GetValue(__instance) as HeroController;
                 if (hc == null) return true;
                 object? F(string n) => AccessTools.Field(typeof(HeroController), n)?.GetValue(hc);
-                // 水平斩 → 旋风丝刃
-                if (ReferenceEquals(__instance, F("normalSlash")) || ReferenceEquals(__instance, F("alternateSlash")))
+                bool Is(params string[] names)
                 {
-                    CycloneSlash.Spawn(hc);
+                    foreach (var n in names)
+                        if (ReferenceEquals(__instance, F(n))) return true;
                     return false;
                 }
-                // 上劈 → 青霄柱
-                if (ReferenceEquals(__instance, F("upSlash")) || ReferenceEquals(__instance, F("altUpSlash")))
+
+                if (id == "Gale")
                 {
-                    SkyPillar.Start(hc);
-                    return false;
+                    if (Is("normalSlash", "alternateSlash")) { CycloneSlash.Spawn(hc); return false; }
+                    if (Is("upSlash", "altUpSlash")) { SkyPillar.Start(hc); return false; }
+                    if (Is("downSlash", "altDownSlash")) { MeteorDive.Start(hc); return false; }
                 }
-                // 下劈 → 坠星震荡
-                if (ReferenceEquals(__instance, F("downSlash")) || ReferenceEquals(__instance, F("altDownSlash")))
+                else if (id == "Blasphemer")
                 {
-                    MeteorDive.Start(hc);
-                    return false;
+                    if (Is("normalSlash", "alternateSlash")) { SwordSwing.Start(hc, SwordSwing.Dir.Forward); return false; }
+                    if (Is("upSlash", "altUpSlash")) { SwordSwing.Start(hc, SwordSwing.Dir.Up); return false; }
+                    if (Is("downSlash", "altDownSlash")) { SwordSwing.Start(hc, SwordSwing.Dir.Down); return false; }
                 }
             }
-            catch (Exception e) { Plugin.Log.LogWarning($"gale move prefix: {e.Message}"); }
+            catch (Exception e) { Plugin.Log.LogWarning($"move prefix: {e.Message}"); }
             return true;
         }
     }
 
-    /// <summary>下刺路径（downSlashType=DownSpike）→ 坠星震荡。</summary>
+    /// <summary>下刺路径（downSlashType=DownSpike）。</summary>
     [HarmonyPatch(typeof(Downspike), nameof(Downspike.StartSlash))]
     internal static class DownspikePrefix
     {
@@ -194,18 +196,19 @@ internal static class CyclonePatches
         {
             try
             {
-                if (DesignedCrests.AppliedId != "Gale") return true;
+                var id = DesignedCrests.AppliedId;
+                if (id == null) return true;
                 var hc = AccessTools.Field(typeof(Downspike), "hc")?.GetValue(__instance) as HeroController;
                 if (hc == null) return true;
-                MeteorDive.Start(hc);
-                return false;
+                if (id == "Gale") { MeteorDive.Start(hc); return false; }
+                if (id == "Blasphemer") { SwordSwing.Start(hc, SwordSwing.Dir.Down); return false; }
             }
-            catch (Exception e) { Plugin.Log.LogWarning($"gale dive prefix: {e.Message}"); }
+            catch (Exception e) { Plugin.Log.LogWarning($"dive prefix: {e.Message}"); }
             return true;
         }
     }
 
-    /// <summary>冲刺攻击路径（DashStab 激活）→ 残影连突。仅实际冲刺中触发。</summary>
+    /// <summary>冲刺攻击路径（DashStab 激活）。仅实际冲刺中触发。</summary>
     [HarmonyPatch(typeof(NailSlashTravel), "OnEnable")]
     internal static class DashStabPrefix
     {
@@ -215,16 +218,17 @@ internal static class CyclonePatches
         {
             try
             {
-                if (DesignedCrests.AppliedId != "Gale") return true;
+                var id = DesignedCrests.AppliedId;
+                if (id == null) return true;
                 var hc = AccessTools.Field(typeof(NailSlashTravel), "hc")?.GetValue(__instance) as HeroController;
                 if (hc == null) return true;
                 if (!GaleCombat.CStateBool(hc, "dashing")) return true;
                 if (Time.time - _last < 0.3f) return true; // 防抖
                 _last = Time.time;
-                PhantomLunge.Start(hc);
-                return false; // 拦截原版冲刺斩判定，伤害由残影连突负责
+                if (id == "Gale") { PhantomLunge.Start(hc); return false; }
+                if (id == "Blasphemer") { BloodRush.Start(hc); return false; }
             }
-            catch (Exception e) { Plugin.Log.LogWarning($"gale lunge prefix: {e.Message}"); }
+            catch (Exception e) { Plugin.Log.LogWarning($"rush prefix: {e.Message}"); }
             return true;
         }
     }
