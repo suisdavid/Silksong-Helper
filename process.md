@@ -343,6 +343,16 @@ designed crest '疾风纹章' applied (16 fields)
 
 **教训**：构建前必须先改版本号；多人联机 Mod 与改位移的 Mod 天然冲突，排查时优先隔离。
 
+## 进展 16.5（2026-08-04）：两个 Unity 经典坑修复（v0.9.5）
+
+诊断日志确认拦截全部正常触发后，定位到两个底层引擎问题：
+
+**1. 冲刺位移被物理回滚**：英雄由 Rigidbody2D 驱动，直接改 `transform.position` 会在下一物理帧被 `rb2d.position` 覆盖回去（日志里 `phantom blink` 明明触发了但人不动）。修复：用 `Rigidbody2D.position` 做传送。
+
+**2. 碰撞箱打不到任何东西**：`ContactFilter2D.NoFilter()` 的 `useTriggers` 默认 **false**，而敌人受击框/可破坏物全是 trigger 碰撞体 → `OverlapCollider` 把它们全部过滤。修复：`_filter.useTriggers = true`。这也解释了"无法打到敌人和其他物品"。
+
+**教训**：反射+程序化物理物件时，Unity 默认值（useTriggers、rb 驱动位移）是最常见的静默失效点。
+
 ## 已实现的架构
 
 - `Plugin.cs`：BepInEx 入口，初始化目录/存档/Harmony 补丁。

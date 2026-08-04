@@ -58,7 +58,9 @@ public sealed class SwordSwing : MonoBehaviour
         _poly.isTrigger = true;
         var rb = go.AddComponent<Rigidbody2D>();
         rb.bodyType = RigidbodyType2D.Kinematic;
+        // 敌人受击框是 trigger：必须显式允许（NoFilter 默认 useTriggers=false 会漏掉全部敌人！）
         _filter = new ContactFilter2D().NoFilter();
+        _filter.useTriggers = true;
         BuildBladeCollider();
 
         // 挥砍角度（朝右为基准；连击交替上/下挥）
@@ -182,7 +184,10 @@ public static class PhantomBlink
             GaleFx.Spawn(GaleFx.Dot, (Vector3)(from + new Vector2(facing * d * i / 4f, 0)), BlasphemerTheme.DarkBlood,
                 0.7f, 0.1f, Vector3.zero, 0f, 0f, 0f, 0.25f);
 
-        hc.transform.position += new Vector3(facing * d, 0, 0);
+        // 传送到目标位置：英雄由 Rigidbody2D 驱动，必须改 rb.position（改 transform 会被物理帧回滚）
+        Vector2 target = (Vector2)hc.transform.position + new Vector2(facing * d, 0);
+        if (hc.Body != null) hc.Body.position = target;
+        hc.transform.position = target;
         // 保留冲刺动能：闪现后向前滑行而不是骤停
         if (hc.Body != null) hc.Body.linearVelocity = new Vector2(facing * 16f, hc.Body.linearVelocity.y);
 
