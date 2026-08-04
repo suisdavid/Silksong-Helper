@@ -165,6 +165,7 @@ public static class PhantomBlink
 
     public static void Do(HeroController hc)
     {
+        Plugin.Log.LogInfo("[DIAG] phantom blink");
         float facing = Mathf.Sign(hc.transform.localScale.x);
         Vector2 from = hc.transform.position + new Vector3(0, 0.9f, 0);
         float d = Dist;

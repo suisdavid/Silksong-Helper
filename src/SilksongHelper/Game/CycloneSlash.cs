@@ -172,15 +172,17 @@ internal static class CyclonePatches
 
                 if (id == "Gale")
                 {
-                    if (Is("normalSlash", "alternateSlash")) { CycloneSlash.Spawn(hc); return false; }
-                    if (Is("upSlash", "altUpSlash")) { SkyPillar.Start(hc); return false; }
-                    if (Is("downSlash", "altDownSlash")) { MeteorDive.Start(hc); return false; }
+                    if (Is("normalSlash", "alternateSlash")) { Plugin.Log.LogInfo("[DIAG] intercept Gale normal"); CycloneSlash.Spawn(hc); return false; }
+                    if (Is("upSlash", "altUpSlash")) { Plugin.Log.LogInfo("[DIAG] intercept Gale up"); SkyPillar.Start(hc); return false; }
+                    if (Is("downSlash", "altDownSlash")) { Plugin.Log.LogInfo("[DIAG] intercept Gale down"); MeteorDive.Start(hc); return false; }
+                    Plugin.Log.LogWarning($"[DIAG] Gale: no slash matched ({__instance.gameObject.name})");
                 }
                 else if (id == "Blasphemer")
                 {
-                    if (Is("normalSlash", "alternateSlash")) { SwordSwing.Start(hc, SwordSwing.Dir.Forward); return false; }
-                    if (Is("upSlash", "altUpSlash")) { SwordSwing.Start(hc, SwordSwing.Dir.Up); return false; }
-                    if (Is("downSlash", "altDownSlash")) { SwordSwing.Start(hc, SwordSwing.Dir.Down); return false; }
+                    if (Is("normalSlash", "alternateSlash")) { Plugin.Log.LogInfo("[DIAG] intercept Blasphemer forward"); SwordSwing.Start(hc, SwordSwing.Dir.Forward); return false; }
+                    if (Is("upSlash", "altUpSlash")) { Plugin.Log.LogInfo("[DIAG] intercept Blasphemer up"); SwordSwing.Start(hc, SwordSwing.Dir.Up); return false; }
+                    if (Is("downSlash", "altDownSlash")) { Plugin.Log.LogInfo("[DIAG] intercept Blasphemer down"); SwordSwing.Start(hc, SwordSwing.Dir.Down); return false; }
+                    Plugin.Log.LogWarning($"[DIAG] Blasphemer: no slash matched ({__instance.gameObject.name})");
                 }
             }
             catch (Exception e) { Plugin.Log.LogWarning($"move prefix: {e.Message}"); }
@@ -202,8 +204,8 @@ internal static class CyclonePatches
                 var hc = (AccessTools.Field(typeof(Downspike), "heroCtrl")?.GetValue(__instance)
                           ?? AccessTools.Field(typeof(Downspike), "hc")?.GetValue(__instance)) as HeroController;
                 if (hc == null) return true;
-                if (id == "Gale") { MeteorDive.Start(hc); return false; }
-                if (id == "Blasphemer") { SwordSwing.Start(hc, SwordSwing.Dir.Down); return false; }
+                if (id == "Gale") { Plugin.Log.LogInfo("[DIAG] downspike Gale dive"); MeteorDive.Start(hc); return false; }
+                if (id == "Blasphemer") { Plugin.Log.LogInfo("[DIAG] downspike Blasphemer down"); SwordSwing.Start(hc, SwordSwing.Dir.Down); return false; }
             }
             catch (Exception e) { Plugin.Log.LogWarning($"dive prefix: {e.Message}"); }
             return true;
@@ -227,8 +229,8 @@ internal static class CyclonePatches
                 if (!GaleCombat.CStateBool(hc, "dashing")) return;
                 if (Time.time - _last < 0.3f) return; // 防抖
                 _last = Time.time;
-                if (id == "Gale") PhantomLunge.Start(hc);
-                else if (id == "Blasphemer") BloodRush.Start(hc);
+                if (id == "Gale") { Plugin.Log.LogInfo("[DIAG] dashstab Gale lunge"); PhantomLunge.Start(hc); }
+                else if (id == "Blasphemer") { Plugin.Log.LogInfo("[DIAG] dashstab Blasphemer bloodrush"); BloodRush.Start(hc); }
             }
             catch (Exception e) { Plugin.Log.LogWarning($"rush postfix: {e.Message}"); }
         }
